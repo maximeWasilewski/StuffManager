@@ -34,6 +34,7 @@ from app.db import (
     rename_category,
     rename_location,
     search_items,
+    set_category_track_usage,
     set_has_photo,
     set_quantity,
     update_item,
@@ -73,6 +74,8 @@ MESSAGES = {
     "categorie-ajoutee": "Catégorie ajoutée.",
     "categorie-renommee": "Catégorie renommée.",
     "categorie-supprimee": "Catégorie supprimée.",
+    "suivi-active": "Suivi d'utilisation activé.",
+    "suivi-desactive": "Suivi d'utilisation désactivé.",
     "emplacement-ajoute": "Emplacement ajouté.",
     "emplacement-renomme": "Emplacement renommé.",
     "emplacement-supprime": "Emplacement supprimé.",
@@ -229,6 +232,10 @@ def _form_context(conn: sqlite3.Connection):
     return categories, locations
 
 
+def _tracking_ids(categories: list[dict]) -> set[int]:
+    return {category["id"] for category in categories if category["track_usage"]}
+
+
 @router.get("/composants/nouveau")
 async def new_item(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
     categories, locations = _form_context(conn)
@@ -252,6 +259,7 @@ async def create_composant(request: Request, conn: sqlite3.Connection = Depends(
         form,
         category_ids={category["id"] for category in categories},
         location_ids={location["id"] for location in locations},
+        tracking_ids=_tracking_ids(categories),
     )
     photo_bytes, photo_error = await uploaded_photo(form)
     if photo_error:
@@ -277,6 +285,7 @@ async def create_composant(request: Request, conn: sqlite3.Connection = Depends(
             name=data.name,
             category_id=data.category_id,
             quantity=data.quantity,
+            used_quantity=data.used_quantity,
             location_id=data.location_id,
             spot=data.spot,
             usage_level=data.usage_level,
@@ -360,6 +369,8 @@ async def update_composant(
         form,
         category_ids={category["id"] for category in categories},
         location_ids={location["id"] for location in locations},
+        tracking_ids=_tracking_ids(categories),
+        preserved_used=int(item["used_quantity"]),
     )
     photo_bytes, photo_error = await uploaded_photo(form)
     if photo_error:
@@ -392,6 +403,7 @@ async def update_composant(
             name=data.name,
             category_id=data.category_id,
             quantity=data.quantity,
+            used_quantity=data.used_quantity,
             location_id=data.location_id,
             spot=data.spot,
             usage_level=data.usage_level,
@@ -447,6 +459,15 @@ async def update_quantity(
             error = str(exc)
     else:
         error = "Action inconnue."
+    if (
+        error is None
+        and item["track_usage"]
+        and quantity < int(item["used_quantity"])
+    ):
+        error = (
+            "La quantité ne peut pas être inférieure aux utilisés "
+            f"({item['used_quantity']})."
+        )
     if error:
         attach_photos([item], request.app.state.photos_dir)
         return render(
@@ -698,6 +719,30 @@ async def create_categorie(request: Request, conn: sqlite3.Connection = Depends(
             status_code=400,
         )
     return redirect("/categories", "categorie-ajoutee")
+
+
+@router.post("/categories/{category_id}/suivi")
+async def suivi_categorie(
+    category_id: int,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_conn),
+):
+    form = await request.form()
+    raw = str(form.get("suivi") or "").strip()
+    if raw not in {"0", "1"}:
+        return _categories_page(
+            request,
+            conn,
+            error="Choix de suivi invalide.",
+            error_target=category_id,
+            attempt="",
+            status_code=400,
+        )
+    try:
+        set_category_track_usage(conn, category_id, raw == "1")
+    except KeyError:
+        raise HTTPException(status_code=404) from None
+    return redirect("/categories", "suivi-active" if raw == "1" else "suivi-desactive")
 
 
 @router.post("/categories/{category_id}/renommer")

@@ -23,6 +23,9 @@
       <button class="qty-inc" type="submit" name="action" value="inc" aria-label="Augmenter la quantité">+</button>
     </form>
     <p class="hint">Les boutons − et + modifient le stock d'une unité. « Enregistrer la quantité » écrit le nombre saisi.</p>
+    {% if item.track_usage %}
+    <p class="used-line">Utilisés {{ item.used_quantity }} · Disponible {{ item.available }}</p>
+    {% endif %}
   </section>
 
   <dl class="facts">

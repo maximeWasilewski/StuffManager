@@ -1,5 +1,5 @@
 name: StuffManager
-version: "1.0.2"
+version: "1.1.0"
 slug: stuffmanager
 description: Inventaire d'atelier pour composants électroniques, câbles et petit matériel.
 url: https://github.com/maximeWasilewski/StuffManager

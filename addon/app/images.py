@@ -9,11 +9,16 @@ import qrcode
 from barcode import Code128
 from barcode.writer import ImageWriter
 from PIL import Image, ImageOps
+from pillow_heif import register_heif_opener
+
+# Pillow does not read iPhone HEIC on its own. The opener uses libheif,
+# shipped inside the pillow-heif wheel (amd64 and aarch64).
+register_heif_opener()
 
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
 MAX_EDGE = 1600
 
-_ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
+_ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "HEIF"}
 
 
 class PhotoError(ValueError):
@@ -39,10 +44,10 @@ def process_photo(data: bytes) -> bytes:
         raise PhotoError("La photo est trop grande en pixels.") from exc
     except Exception as exc:
         raise PhotoError(
-            "Fichier image illisible. Utilisez un JPEG, un PNG ou un WebP."
+            "Fichier image illisible. Utilisez un JPEG, un PNG, un WebP ou un HEIC."
         ) from exc
     if image.format not in _ALLOWED_FORMATS:
-        raise PhotoError("La photo doit être un JPEG, un PNG ou un WebP.")
+        raise PhotoError("La photo doit être un JPEG, un PNG, un WebP ou un HEIC.")
     image = ImageOps.exif_transpose(image) or image
     image.thumbnail((MAX_EDGE, MAX_EDGE), Image.Resampling.LANCZOS)
     rgb = _to_rgb(image)

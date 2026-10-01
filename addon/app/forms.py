@@ -22,6 +22,7 @@ DEFAULT_VALUES: dict[str, str] = {
     "niveau": "occasionnel",
     "reference": "",
     "notes": "",
+    "utilises": "0",
 }
 
 
@@ -35,6 +36,7 @@ class ItemData:
     usage_level: str
     notes: str | None
     reference: str | None
+    used_quantity: int
 
 
 def parse_quantity(raw: str) -> int:
@@ -64,6 +66,7 @@ def values_from_item(item: dict) -> dict[str, str]:
         "niveau": item["usage_level"],
         "reference": item["reference"] or "",
         "notes": item["notes"] or "",
+        "utilises": str(item["used_quantity"]),
     }
 
 
@@ -72,10 +75,13 @@ def parse_item_form(
     *,
     category_ids: set[int],
     location_ids: set[int],
+    tracking_ids: set[int],
+    preserved_used: int = 0,
 ) -> tuple[ItemData | None, list[str], dict[str, str]]:
     errors: list[str] = []
     nom = " ".join(str(form.get("nom") or "").split())
     raw_qty = str(form.get("quantite") or "").strip()
+    raw_used = str(form.get("utilises") or "").strip()
     raw_cat = str(form.get("categorie_id") or "").strip()
     raw_loc = str(form.get("emplacement_id") or "").strip()
     spot_raw = str(form.get("spot") or "")
@@ -87,6 +93,7 @@ def parse_item_form(
         "nom": nom,
         "categorie_id": raw_cat,
         "quantite": raw_qty,
+        "utilises": raw_used,
         "emplacement_id": raw_loc,
         "spot": spot_raw,
         "niveau": niveau,
@@ -123,6 +130,21 @@ def parse_item_form(
 
     if niveau not in USAGE_LEVELS:
         errors.append("Choisissez un niveau d'utilisation.")
+
+    used_quantity = preserved_used
+    tracks = category_id is not None and category_id in tracking_ids
+    if tracks:
+        if not raw_used.isdigit():
+            if raw_used:
+                errors.append(
+                    "Les utilisés doivent être un nombre entier entre 0 et la quantité."
+                )
+            else:
+                errors.append("Indiquez combien sont utilisés.")
+        elif quantity is not None and (len(raw_used) > 7 or int(raw_used) > quantity):
+            errors.append("Les utilisés ne peuvent pas dépasser la quantité.")
+        elif quantity is not None:
+            used_quantity = int(raw_used)
 
     spot = " ".join(spot_raw.split())
     if len(spot) > SPOT_MAX:
@@ -161,6 +183,7 @@ def parse_item_form(
             usage_level=niveau,
             notes=notes or None,
             reference=reference or None,
+            used_quantity=used_quantity,
         ),
         errors,
         values,

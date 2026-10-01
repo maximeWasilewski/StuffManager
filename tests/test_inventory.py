@@ -314,6 +314,339 @@ def test_photo_upload_becomes_jpeg(client):
     assert image.content[:2] == b"\xff\xd8"
 
 
+def test_startup_adds_usage_columns_to_existing_database(tmp_path):
+    import sqlite3
+
+    db_path = tmp_path / "stuffmanager.db"
+    raw = sqlite3.connect(db_path)
+    raw.executescript(
+        """
+        CREATE TABLE categories (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE locations (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        CREATE TABLE items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+            quantity INTEGER NOT NULL CHECK (quantity >= 0),
+            location_id INTEGER REFERENCES locations(id) ON DELETE RESTRICT,
+            spot TEXT,
+            usage_level TEXT NOT NULL CHECK (
+                usage_level IN ('jamais', 'rare', 'occasionnel', 'frequent')
+            ),
+            notes TEXT,
+            reference TEXT,
+            has_photo INTEGER NOT NULL DEFAULT 0,
+            search_text TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        INSERT INTO meta (key, value) VALUES ('next_item_number', '7');
+        INSERT INTO categories (id, name, created_at)
+        VALUES (1, 'Câble', '2024-01-01T00:00:00+00:00');
+        INSERT INTO items (
+            code, name, category_id, quantity, location_id, spot,
+            usage_level, notes, reference, has_photo, search_text,
+            created_at, updated_at
+        ) VALUES (
+            'SM-000003', 'Ancien câble', 1, 5, NULL, NULL,
+            'rare', NULL, 'X', 0, 'ancien cable sm-000003',
+            '2024-01-02T00:00:00+00:00', '2024-01-02T00:00:00+00:00'
+        );
+        """
+    )
+    raw.commit()
+    raw.close()
+
+    init_db(db_path)
+    init_db(db_path)
+    conn = connect(db_path)
+    try:
+        categories = {row["name"] for row in conn.execute("PRAGMA table_info(categories)")}
+        items = {row["name"] for row in conn.execute("PRAGMA table_info(items)")}
+        assert "track_usage" in categories
+        assert "used_quantity" in items
+        category = conn.execute(
+            "SELECT name, track_usage FROM categories WHERE id = 1"
+        ).fetchone()
+        assert category["name"] == "Câble"
+        assert category["track_usage"] == 0
+        assert conn.execute("SELECT COUNT(*) AS c FROM categories").fetchone()["c"] == 1
+        item = conn.execute(
+            "SELECT code, quantity, used_quantity FROM items"
+        ).fetchone()
+        assert item["code"] == "SM-000003"
+        assert item["quantity"] == 5
+        assert item["used_quantity"] == 0
+        counter = conn.execute(
+            "SELECT value FROM meta WHERE key = 'next_item_number'"
+        ).fetchone()
+        assert counter["value"] == "7"
+    finally:
+        conn.close()
+
+
+def enable_tracking(client, name: str) -> str:
+    ident = category_id(client, name)
+    response = client.post(
+        f"/categories/{ident}/suivi",
+        data={"suivi": "1"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303, response.text
+    assert "msg=suivi-active" in response.headers["location"]
+    return ident
+
+
+def test_track_usage_is_off_until_enabled(client):
+    page = client.get("/categories")
+    assert page.status_code == 200
+    assert "suivi d'utilisation" in page.text
+    assert "Suivi non" in page.text
+    assert "Suivi oui" not in page.text
+    assert page.text.index("Ajouter la catégorie") < page.text.index("Suivi non")
+    cable = enable_tracking(client, "Câble")
+    enabled = client.get("/categories").text
+    assert f"/categories/{cable}/suivi" in enabled
+    assert "Suivi oui" in enabled
+    off = client.post(
+        f"/categories/{cable}/suivi",
+        data={"suivi": "0"},
+        follow_redirects=False,
+    )
+    assert off.status_code == 303
+    assert "Suivi oui" not in client.get("/categories").text
+
+
+def test_used_and_available_follow_the_category_option(client):
+    cable = enable_tracking(client, "Câble")
+    tracked = create(
+        client,
+        nom="Câble USB",
+        categorie_id=cable,
+        quantite="4",
+        utilises="1",
+        reference="USB",
+    )
+    detail = client.get(clean_path(tracked))
+    assert "Utilisés 1" in detail.text
+    assert "Disponible 3" in detail.text
+    home = client.get("/")
+    assert "Câble USB" in home.text
+    assert "Utilisés 1" in home.text
+    assert "Disponible 3" in home.text
+
+    plain = create(client, nom="Vis libre", reference="VIS", quantite="6")
+    plain_page = client.get(clean_path(plain))
+    assert "Vis libre" in plain_page.text
+    assert "Utilisés" not in plain_page.text
+    assert "Disponible" not in plain_page.text
+
+    missing = client.post(
+        "/composants",
+        data=payload(client, nom="Sans utilisés", categorie_id=cable, quantite="2"),
+        follow_redirects=False,
+    )
+    assert missing.status_code == 400
+    assert "utilisés" in missing.text.lower()
+    assert "Sans utilisés" not in client.get("/").text
+
+    too_many = client.post(
+        "/composants",
+        data=payload(
+            client,
+            nom="Trop utilisés",
+            categorie_id=cable,
+            quantite="2",
+            utilises="5",
+        ),
+        follow_redirects=False,
+    )
+    assert too_many.status_code == 400
+    assert "dépasser" in too_many.text
+
+
+def test_single_item_used_is_yes_or_no(client):
+    cable = enable_tracking(client, "Câble")
+    location = create(
+        client,
+        nom="Adaptateur unique",
+        categorie_id=cable,
+        quantite="1",
+        utilises="1",
+        reference="ADP",
+    )
+    detail = client.get(clean_path(location))
+    assert "Utilisés 1" in detail.text
+    assert "Disponible 0" in detail.text
+    edit = client.get(f"/composants/{item_id(location)}/modifier")
+    assert ">Utilisé<" in edit.text
+    assert ">Non<" in edit.text
+    freed = client.post(
+        clean_path(location),
+        data=payload(
+            client,
+            nom="Adaptateur unique",
+            categorie_id=cable,
+            quantite="1",
+            utilises="0",
+            reference="ADP",
+        ),
+        follow_redirects=False,
+    )
+    assert freed.status_code == 303, freed.text
+    again = client.get(clean_path(location))
+    assert "Utilisés 0" in again.text
+    assert "Disponible 1" in again.text
+
+
+def test_disabling_track_usage_keeps_the_used_count(client):
+    cable = enable_tracking(client, "Câble")
+    location = create(
+        client,
+        nom="Bobine",
+        categorie_id=cable,
+        quantite="4",
+        utilises="2",
+        reference="BOB",
+    )
+    off = client.post(
+        f"/categories/{cable}/suivi",
+        data={"suivi": "0"},
+        follow_redirects=False,
+    )
+    assert off.status_code == 303
+    hidden = client.get(clean_path(location))
+    assert "Bobine" in hidden.text
+    assert "Utilisés" not in hidden.text
+    assert "Disponible" not in hidden.text
+    card = client.get("/")
+    assert "Bobine" in card.text
+    assert "Disponible" not in card.text
+
+    renamed = client.post(
+        clean_path(location),
+        data=payload(
+            client,
+            nom="Bobine étain",
+            categorie_id=cable,
+            quantite="4",
+            reference="BOB",
+        ),
+        follow_redirects=False,
+    )
+    assert renamed.status_code == 303, renamed.text
+    enable_tracking(client, "Câble")
+    restored = client.get(clean_path(location))
+    assert "Bobine étain" in restored.text
+    assert "Utilisés 2" in restored.text
+    assert "Disponible 2" in restored.text
+
+
+def test_quantity_cannot_drop_below_used(client):
+    cable = enable_tracking(client, "Câble")
+    location = create(
+        client,
+        nom="Gaine",
+        categorie_id=cable,
+        quantite="4",
+        utilises="3",
+        reference="G",
+    )
+    ident = item_id(location)
+    denied = client.post(
+        f"/composants/{ident}/quantite",
+        data={"action": "set", "quantite": "1"},
+        follow_redirects=False,
+    )
+    assert denied.status_code == 400
+    assert "utilisés" in denied.text.lower()
+    assert 'value="4"' in denied.text
+    assert "Utilisés 3" in denied.text
+    ok = client.post(
+        f"/composants/{ident}/quantite",
+        data={"action": "dec", "quantite": "4"},
+        follow_redirects=True,
+    )
+    assert 'value="3"' in ok.text
+    assert "Disponible 0" in ok.text
+
+
+def test_heic_photo_is_stored_as_jpeg(client):
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+    buffer = BytesIO()
+    Image.new("RGB", (1800, 40), (7, 8, 9)).save(buffer, format="HEIF")
+    response = client.post(
+        "/composants",
+        data=payload(client, nom="Photo iPhone", reference="HEIC"),
+        files={"photo": ("IMG_0001.HEIC", buffer.getvalue(), "image/heic")},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303, response.text
+    page = client.get(clean_path(response.headers["location"]))
+    match = re.search(r'src="(/photos/\d+\.jpg)"', page.text)
+    assert match, page.text
+    image = client.get(match.group(1))
+    assert image.status_code == 200
+    assert image.headers["content-type"].startswith("image/jpeg")
+    assert image.content[:2] == b"\xff\xd8"
+    opened = Image.open(BytesIO(image.content))
+    assert opened.size[0] == 1600
+    assert max(opened.size) <= 1600
+
+
+def test_photo_control_works_on_iphone_and_previews(client):
+    page = client.get("/composants/nouveau").text
+    match = re.search(r'<input\b[^>]*\bid="photo-input"[^>]*>', page)
+    assert match, page
+    tag = match.group(0).lower()
+    assert 'type="file"' in tag
+    assert "display:none" not in tag.replace(" ", "")
+    assert "display: none" not in tag
+    assert " hidden" not in tag and not tag.endswith("hidden>")
+    assert "heic" in tag
+    assert "heif" in tag
+    assert "capture=" not in tag
+    assert 'for="photo-input"' in page
+    preview = re.search(r'<img\b[^>]*\bid="photo-preview"[^>]*>', page)
+    assert preview, page
+    assert "hidden" in preview.group(0)
+    assert "createObjectURL" in page
+    assert 'id="photo-current"' not in page
+
+    buffer = BytesIO()
+    Image.new("RGB", (12, 8), (1, 2, 3)).save(buffer, format="PNG")
+    created = client.post(
+        "/composants",
+        data=payload(client, nom="Photo actuelle", reference="NOW"),
+        files={"photo": ("now.png", buffer.getvalue(), "image/png")},
+        follow_redirects=False,
+    )
+    assert created.status_code == 303, created.text
+    edit = client.get(f"/composants/{item_id(created.headers['location'])}/modifier").text
+    current = re.search(r'<img\b[^>]*\bid="photo-current"[^>]*>', edit)
+    assert current, edit
+    assert "hidden" not in current.group(0)
+    assert "/photos/" in current.group(0)
+    edit_preview = re.search(r'<img\b[^>]*\bid="photo-preview"[^>]*>', edit)
+    assert edit_preview
+    assert "hidden" in edit_preview.group(0)
+
+
 def test_reject_invalid_photo_and_negative_quantity(client):
     bad_photo = client.post(
         "/composants",

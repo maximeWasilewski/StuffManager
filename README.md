@@ -6,10 +6,10 @@ L'interface est en français et se lit sur un téléphone, dans l'atelier.
 
 ## Ce que fait l'application
 
-- Une fiche par composant : nom, catégorie, quantité, emplacement, niveau d'utilisation, photo, notes, référence.
+- Une fiche par composant : nom, catégorie, quantité, emplacement, niveau d'utilisation, photo, notes, référence. Une catégorie peut activer le suivi d'utilisation : on note alors combien sont utilisés, et le disponible est la quantité moins les utilisés.
 - Recherche par nom, référence ou code, et filtres par catégorie, emplacement ou niveau d'utilisation.
 - Les emplacements (tiroir, boîte, étagère…) listent tout ce qui est rangé au même endroit. On peut en ajouter, les renommer, et supprimer ceux qui sont vides.
-- Même chose pour les catégories, tant qu'aucun composant ne les utilise.
+- Même chose pour les catégories, tant qu'aucun composant ne les utilise. Le suivi d'utilisation se règle catégorie par catégorie, et il est coupé par défaut.
 - Une étiquette imprimable : nom, catégorie, emplacement, code-barres, code lisible et QR.
 
 Catégories de départ : Câble, Électronique, Connectique, Outil, Consommable, Autre. Elles ne sont pas verrouillées.
@@ -83,7 +83,7 @@ Avec Docker Compose, tout est dans le dossier `data/` à la racine du projet. Il
 
 Pour une sauvegarde : arrêter l'application, puis copier `data/`.
 
-Au démarrage, les tables manquantes sont créées. Les six catégories de départ ne sont ajoutées que si la table des catégories est vide.
+Au démarrage, les tables manquantes sont créées, et les colonnes manquantes sont ajoutées à une base déjà en place (y compris `/data/stuffmanager.db` sur Home Assistant). Les six catégories de départ ne sont ajoutées que si la table des catégories est vide.
 
 ## Codes-barres et QR
 
@@ -95,7 +95,7 @@ Au démarrage, les tables manquantes sont créées. Les six catégories de dépa
 
 ## Photos
 
-JPEG, PNG ou WebP, 8 Mo maximum à l'envoi. L'image est tournée selon les données du téléphone, convertie en JPEG (côté le plus long : 1600 pixels) et remplace la photo précédente. Une seule photo par fiche.
+JPEG, PNG, WebP ou HEIC (iPhone), 8 Mo maximum à l'envoi. L'image est tournée selon les données du téléphone, convertie en JPEG (côté le plus long : 1600 pixels) et remplace la photo précédente. Une seule photo par fiche. Le formulaire montre un aperçu avant l'enregistrement.
 
 ## Lancer sans Docker
 
