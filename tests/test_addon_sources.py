@@ -25,3 +25,16 @@ def test_addon_application_matches_the_compose_app():
     assert (ROOT / "requirements.txt").read_bytes() == (
         ROOT / "addon" / "requirements.txt"
     ).read_bytes()
+
+
+def test_addon_run_script_survives_windows_line_endings():
+    script = (ROOT / "addon" / "run.sh").read_bytes()
+    assert b"\r" not in script
+    assert script.startswith(b"#!/bin/sh\n")
+    dockerfile = (ROOT / "addon" / "Dockerfile").read_bytes()
+    assert b"\r" not in dockerfile
+    text = dockerfile.decode()
+    assert "COPY run.sh /run.sh" in text
+    assert "sed -i 's/\\r$//' /run.sh" in text
+    assert "chmod 755 /run.sh" in text
+    assert 'CMD ["/bin/sh", "/run.sh"]' in text

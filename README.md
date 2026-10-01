@@ -60,7 +60,7 @@ Home Assistant OS ne lance pas ce `docker-compose.yml`. StuffManager s'installe 
 
 1. Récupérez ce dépôt, puis copiez le dossier `addon` dans le partage Samba `addons` du Pi (module « Samba share », ou le dossier `/addons` via SSH). Le chemin attendu est `addons/addon/config.yaml`.
 2. Dans Home Assistant : Paramètres → Modules complémentaires → Boutique → menu (⋮) → Recharger.
-3. Sous « Modules complémentaires locaux », ouvrez StuffManager, installez-le, puis démarrez-le. Le démarrage au boot est automatique.
+3. Sous « Modules complémentaires locaux », ouvrez StuffManager, installez-le, puis démarrez-le. Le démarrage au boot est automatique. Après avoir remplacé le dossier `addon`, rechargez la boutique puis utilisez Reconstruire sur la fiche du module : un redémarrage relance l'image déjà construite.
 4. Ouvrez `http://<ip-du-pi>:8080` depuis le téléphone. Il n'y a pas d'ingress : l'interface n'est pas intégrée au menu de Home Assistant. Le port publié est 8080 sur l'hôte. Si ce port est déjà pris, changez seulement le port hôte dans la configuration réseau du module ; le conteneur reste sur 8080, et le téléphone doit utiliser le port hôte choisi.
 
 Les données de l'add-on sont dans le volume persistant `/data` du conteneur, pas dans le `./data` de Docker Compose :
