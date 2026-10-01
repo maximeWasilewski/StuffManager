@@ -1,7 +1,11 @@
 """SQLite schema, startup setup, and queries.
 
-Tables are created on startup if they are missing. There is no separate
-migration tool: this is a single-user file database.
+Tables are created on startup if they are missing. Columns added in later
+versions are applied to an existing database file the same way. There is no
+separate migration tool: this is a single-user file database.
+
+Category options are columns on ``categories`` (``track_usage`` today).
+Another option is another column, not a custom-field store.
 """
 
 from __future__ import annotations
@@ -49,7 +53,8 @@ _SCHEMA: tuple[str, ...] = (
     CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        track_usage INTEGER NOT NULL DEFAULT 0
     )
     """,
     """
@@ -72,6 +77,7 @@ _SCHEMA: tuple[str, ...] = (
         name TEXT NOT NULL,
         category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
         quantity INTEGER NOT NULL CHECK (quantity >= 0),
+        used_quantity INTEGER NOT NULL DEFAULT 0 CHECK (used_quantity >= 0),
         location_id INTEGER REFERENCES locations(id) ON DELETE RESTRICT,
         spot TEXT,
         usage_level TEXT NOT NULL CHECK (
@@ -91,10 +97,12 @@ _SCHEMA: tuple[str, ...] = (
 )
 
 _ITEM_SELECT = """
-SELECT i.id, i.code, i.name, i.category_id, i.quantity, i.location_id, i.spot,
+SELECT i.id, i.code, i.name, i.category_id, i.quantity, i.used_quantity,
+       i.location_id, i.spot,
        i.usage_level, i.notes, i.reference, i.has_photo, i.search_text,
        i.created_at, i.updated_at,
        c.name AS category_name,
+       c.track_usage AS track_usage,
        l.name AS location_name
 FROM items i
 JOIN categories c ON c.id = i.category_id
@@ -154,6 +162,18 @@ def init_db(db_path: Path) -> None:
         conn.execute("PRAGMA journal_mode = WAL")
         for statement in _SCHEMA:
             conn.execute(statement)
+        _ensure_column(
+            conn,
+            "categories",
+            "track_usage",
+            "INTEGER NOT NULL DEFAULT 0",
+        )
+        _ensure_column(
+            conn,
+            "items",
+            "used_quantity",
+            "INTEGER NOT NULL DEFAULT 0 CHECK (used_quantity >= 0)",
+        )
         conn.execute(
             "INSERT OR IGNORE INTO meta (key, value) VALUES ('next_item_number', '1')"
         )
@@ -169,11 +189,28 @@ def init_db(db_path: Path) -> None:
         conn.close()
 
 
+def _ensure_column(
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    definition: str,
+) -> None:
+    if table not in {"categories", "items"}:
+        raise RuntimeError(table)
+    names = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in names:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
 def _enrich(row: sqlite3.Row) -> dict:
     item = dict(row)
     item["usage_label"] = USAGE_LEVELS.get(item["usage_level"], item["usage_level"])
     item["place_label"] = place_label(item["location_name"], item["spot"])
     item["created_label"] = format_when(item["created_at"])
+    item["track_usage"] = bool(item["track_usage"])
+    item["used_quantity"] = int(item["used_quantity"])
+    # Available is derived. It is never stored.
+    item["available"] = int(item["quantity"]) - item["used_quantity"]
     return item
 
 
@@ -185,7 +222,7 @@ def _sorted(items: list[dict]) -> list[dict]:
 def list_categories(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT c.id, c.name, c.created_at,
+        SELECT c.id, c.name, c.track_usage, c.created_at,
                (SELECT COUNT(*) FROM items i WHERE i.category_id = c.id) AS item_count
         FROM categories c
         """
@@ -198,7 +235,7 @@ def list_categories(conn: sqlite3.Connection) -> list[dict]:
 def get_category(conn: sqlite3.Connection, category_id: int) -> dict | None:
     row = conn.execute(
         """
-        SELECT c.id, c.name, c.created_at,
+        SELECT c.id, c.name, c.track_usage, c.created_at,
                (SELECT COUNT(*) FROM items i WHERE i.category_id = c.id) AS item_count
         FROM categories c
         WHERE c.id = ?
@@ -289,6 +326,19 @@ def rename_category(conn: sqlite3.Connection, category_id: int, name: str) -> No
         )
     except sqlite3.IntegrityError as exc:
         raise ValueError("Cette catégorie existe déjà.") from exc
+
+
+def set_category_track_usage(
+    conn: sqlite3.Connection,
+    category_id: int,
+    enabled: bool,
+) -> None:
+    if get_category(conn, category_id) is None:
+        raise KeyError(category_id)
+    conn.execute(
+        "UPDATE categories SET track_usage = ? WHERE id = ?",
+        (1 if enabled else 0, category_id),
+    )
 
 
 def delete_category(conn: sqlite3.Connection, category_id: int) -> None:
@@ -386,6 +436,7 @@ def create_item(
     name: str,
     category_id: int,
     quantity: int,
+    used_quantity: int,
     location_id: int | None,
     spot: str | None,
     usage_level: str,
@@ -400,16 +451,17 @@ def create_item(
     cursor = conn.execute(
         """
         INSERT INTO items (
-            code, name, category_id, quantity, location_id, spot,
+            code, name, category_id, quantity, used_quantity, location_id, spot,
             usage_level, notes, reference, has_photo, search_text,
             created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
         """,
         (
             code,
             name,
             category_id,
             quantity,
+            used_quantity,
             location_id,
             spot,
             usage_level,
@@ -430,6 +482,7 @@ def update_item(
     name: str,
     category_id: int,
     quantity: int,
+    used_quantity: int,
     location_id: int | None,
     spot: str | None,
     usage_level: str,
@@ -446,7 +499,8 @@ def update_item(
     conn.execute(
         """
         UPDATE items
-        SET name = ?, category_id = ?, quantity = ?, location_id = ?, spot = ?,
+        SET name = ?, category_id = ?, quantity = ?, used_quantity = ?,
+            location_id = ?, spot = ?,
             usage_level = ?, notes = ?, reference = ?, has_photo = ?,
             search_text = ?, updated_at = ?
         WHERE id = ?
@@ -455,6 +509,7 @@ def update_item(
             name,
             category_id,
             quantity,
+            used_quantity,
             location_id,
             spot,
             usage_level,

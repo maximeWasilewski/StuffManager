@@ -29,17 +29,47 @@
   </label>
   <label>
     Catégorie
-    <select name="categorie_id" required>
-      <option value="" {% if not values.categorie_id %}selected{% endif %}>Choisir…</option>
+    <select id="categorie" name="categorie_id" required>
+      <option value="" data-suivi="0" {% if not values.categorie_id %}selected{% endif %}>Choisir…</option>
       {% for c in categories %}
-      <option value="{{ c.id }}" {% if values.categorie_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+      <option value="{{ c.id }}" data-suivi="{{ 1 if c.track_usage else 0 }}" {% if values.categorie_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
       {% endfor %}
     </select>
   </label>
   <label>
     Quantité
-    <input name="quantite" required inputmode="numeric" maxlength="7" value="{{ values.quantite }}" autocomplete="off">
+    <input id="quantite" name="quantite" required inputmode="numeric" maxlength="7" value="{{ values.quantite }}" autocomplete="off">
   </label>
+  {% set ns = namespace(suivi=false) %}
+  {% for c in categories %}
+    {% if values.categorie_id == c.id|string and c.track_usage %}
+      {% set ns.suivi = true %}
+    {% endif %}
+  {% endfor %}
+  {% set qty_one = values.quantite|int(0) == 1 %}
+  {% set used_num = values.utilises|int(0) %}
+  <div id="utilises-block" {% if not ns.suivi %}hidden{% endif %}>
+    <div id="utilises-nombre" {% if qty_one %}hidden{% endif %}>
+      <label>
+        Utilisés
+        <input id="utilises-input" name="utilises" inputmode="numeric" maxlength="7" value="{{ values.utilises }}" autocomplete="off" {% if qty_one %}disabled{% endif %}>
+      </label>
+      <span class="hint">Nombre entier, de 0 à la quantité. Disponible = quantité − utilisés.</span>
+    </div>
+    <fieldset id="utilises-binaire" class="choices-wrap" {% if not qty_one %}hidden{% endif %}>
+      <legend>Utilisés</legend>
+      <div class="choices choices-binary">
+        <label class="choice">
+          <input type="radio" name="utilises" value="0" {% if used_num == 0 %}checked{% endif %} {% if not qty_one %}disabled{% endif %}>
+          <span>Non</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="utilises" value="1" {% if used_num > 0 %}checked{% endif %} {% if not qty_one %}disabled{% endif %}>
+          <span>Utilisé</span>
+        </label>
+      </div>
+    </fieldset>
+  </div>
   <label>
     Emplacement
     <select name="emplacement_id">
@@ -76,14 +106,16 @@
     <span class="hint">Optionnel.</span>
     <textarea name="notes" maxlength="4000" rows="4">{{ values.notes }}</textarea>
   </label>
-  <label>
-    Photo
-    <span class="hint">Une seule photo. JPEG, PNG ou WebP, 8 Mo maximum. La nouvelle remplace l'ancienne.</span>
+  <div class="photo-block">
+    <label for="photo-input">Photo</label>
+    <span class="hint">Une seule photo. JPEG, PNG, WebP ou HEIC (iPhone), 8 Mo maximum. La nouvelle remplace l'ancienne.</span>
     {% if item and item.has_photo %}
-    <img class="edit-photo" src="/photos/{{ item.id }}.jpg" alt="Photo actuelle de {{ item.name }}">
+    <img id="photo-current" class="photo-preview" src="/photos/{{ item.id }}.jpg" alt="Photo actuelle de {{ item.name }}">
     {% endif %}
-    <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
-  </label>
+    <img id="photo-preview" class="photo-preview" alt="" hidden>
+    <p id="photo-preview-caption" class="hint" hidden>Aperçu, avant enregistrement.</p>
+    <input id="photo-input" type="file" name="photo" accept="image/*,image/heic,image/heif,.heic,.heif">
+  </div>
   {% if item and item.has_photo %}
   <label class="check">
     <input type="checkbox" name="supprimer_photo" value="1">
@@ -99,5 +131,98 @@
     {% endif %}
   </div>
 </form>
+<script>
+(function () {
+  var select = document.getElementById("categorie");
+  var qty = document.getElementById("quantite");
+  var block = document.getElementById("utilises-block");
+  var nombre = document.getElementById("utilises-nombre");
+  var binaire = document.getElementById("utilises-binaire");
+  var nombreInput = document.getElementById("utilises-input");
+  var radios = binaire ? binaire.querySelectorAll('input[type="radio"]') : [];
+  if (select && qty && block && nombreInput) {
+    var lastNumber = (nombreInput.value || "0").trim() || "0";
+
+    function tracks() {
+      var option = select.options[select.selectedIndex];
+      return !!(option && option.getAttribute("data-suivi") === "1");
+    }
+
+    function applyUsed() {
+      var raw = (qty.value || "").trim();
+      var quantity = /^\d+$/.test(raw) ? parseInt(raw, 10) : null;
+      var single = quantity === 1 && document.activeElement !== qty;
+      var on = tracks();
+      block.hidden = !on;
+      if (nombre) nombre.hidden = !on || single;
+      if (binaire) binaire.hidden = !on || !single;
+      nombreInput.disabled = single;
+      if (!single) nombreInput.value = lastNumber;
+      for (var i = 0; i < radios.length; i++) {
+        radios[i].disabled = !single;
+        if (single) radios[i].checked = radios[i].value === (lastNumber === "0" ? "0" : "1");
+      }
+    }
+
+    nombreInput.addEventListener("input", function () {
+      if (!nombreInput.disabled) lastNumber = (nombreInput.value || "").trim() || "0";
+    });
+    for (var r = 0; r < radios.length; r++) {
+      radios[r].addEventListener("change", function () {
+        if (this.checked) lastNumber = this.value;
+      });
+    }
+    select.addEventListener("change", applyUsed);
+    qty.addEventListener("input", applyUsed);
+    qty.addEventListener("blur", applyUsed);
+    applyUsed();
+  }
+
+  var input = document.getElementById("photo-input");
+  var preview = document.getElementById("photo-preview");
+  var caption = document.getElementById("photo-preview-caption");
+  var current = document.getElementById("photo-current");
+  if (!input || !preview) return;
+  var url = null;
+
+  function clearPreview() {
+    if (url) URL.revokeObjectURL(url);
+    url = null;
+    preview.removeAttribute("src");
+    preview.hidden = true;
+    preview.alt = "";
+    if (caption) caption.hidden = true;
+    if (current) current.hidden = false;
+  }
+
+  input.addEventListener("change", function () {
+    var file = input.files && input.files[0];
+    if (!file) {
+      clearPreview();
+      return;
+    }
+    if (url) URL.revokeObjectURL(url);
+    url = URL.createObjectURL(file);
+    preview.onload = function () {
+      preview.hidden = false;
+      if (caption) {
+        caption.hidden = false;
+        caption.textContent = "Aperçu, avant enregistrement.";
+      }
+      if (current) current.hidden = true;
+    };
+    preview.onerror = function () {
+      preview.hidden = true;
+      if (current) current.hidden = false;
+      if (caption) {
+        caption.hidden = false;
+        caption.textContent = "Aperçu indisponible sur cet appareil. La photo sera convertie à l'enregistrement.";
+      }
+    };
+    preview.alt = "Aperçu de " + file.name;
+    preview.src = url;
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}

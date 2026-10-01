@@ -15,6 +15,10 @@
         {% endif %}
         <span class="card-foot">
           <span class="qty {% if item.quantity == 0 %}qty-zero{% endif %}">Qté {{ item.quantity }}</span>
+          {% if item.track_usage %}
+          <span>Utilisés {{ item.used_quantity }}</span>
+          <span class="{% if item.available == 0 %}qty-zero{% endif %}">Disponible {{ item.available }}</span>
+          {% endif %}
           <span class="usage">{{ item.usage_label }}</span>
         </span>
       </span>
