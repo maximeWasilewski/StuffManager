@@ -2,7 +2,7 @@
 # python:3.12-slim-bookworm existe en amd64 et arm64 / aarch64.
 FROM python:3.12-slim-bookworm
 
-ARG BUILD_VERSION=1.0.1
+ARG BUILD_VERSION=1.0.2
 ARG BUILD_ARCH
 
 LABEL \
