@@ -3,27 +3,27 @@
 {% block content %}
 <h1>Catégories</h1>
 <p class="lead">Elles servent à filtrer l'inventaire. Vous pouvez en ajouter, les renommer, ou supprimer celles qu'aucun composant n'utilise.</p>
+<form class="cat-create" method="post" action="/categories" autocomplete="off">
+  <label for="nouvelle-categorie">Nouvelle catégorie</label>
+  <div class="cat-create-row">
+    <input id="nouvelle-categorie" name="nom" required maxlength="60" placeholder="ex. Capteurs" value="{% if error_target == 'new' %}{{ attempt }}{% endif %}">
+    <button type="submit">Ajouter la catégorie</button>
+  </div>
+</form>
 {% if not categories %}
 <section class="empty">
   <p>Aucune catégorie. Ajoutez-en une pour pouvoir créer un composant.</p>
 </section>
 {% else %}
-<ul class="manage">
+<ul class="cat-list">
   {% for c in categories %}
-  <li>
-    <form class="rename" method="post" action="/categories/{{ c.id }}/renommer" autocomplete="off">
-      <input name="nom" required maxlength="60" aria-label="Nom de la catégorie {{ c.name }}" value="{% if error_target == c.id %}{{ attempt }}{% else %}{{ c.name }}{% endif %}">
+  <li class="cat-row">
+    <input class="cat-name" form="rename-{{ c.id }}" name="nom" required maxlength="60" aria-label="Nom de la catégorie {{ c.name }}" value="{% if error_target == c.id %}{{ attempt }}{% else %}{{ c.name }}{% endif %}">
+    <form id="rename-{{ c.id }}" class="cat-rename" method="post" action="/categories/{{ c.id }}/renommer" autocomplete="off">
       <button type="submit">Renommer</button>
     </form>
-    <p class="meta">
-      {% if c.item_count == 0 %}Aucun composant
-      {% elif c.item_count == 1 %}1 composant
-      {% else %}{{ c.item_count }} composants
-      {% endif %}
-      {% if c.item_count > 0 %} — suppression impossible{% endif %}
-    </p>
     {% if c.item_count == 0 %}
-    <form method="post" action="/categories/{{ c.id }}/supprimer" class="stack">
+    <form class="cat-delete" method="post" action="/categories/{{ c.id }}/supprimer">
       <button class="danger" type="submit">Supprimer</button>
     </form>
     {% endif %}
@@ -31,12 +31,4 @@
   {% endfor %}
 </ul>
 {% endif %}
-<h2>Nouvelle catégorie</h2>
-<form class="stack" method="post" action="/categories" autocomplete="off">
-  <label>
-    Nom
-    <input name="nom" required maxlength="60" placeholder="ex. Capteurs" value="{% if error_target == 'new' %}{{ attempt }}{% endif %}">
-  </label>
-  <button type="submit">Ajouter la catégorie</button>
-</form>
 {% endblock %}
