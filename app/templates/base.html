@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#1c1915">
+  <title>{% block title %}StuffManager{% endblock %}</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <a class="skip" href="#contenu">Aller au contenu</a>
+  <header class="top">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">SM</span>
+      <span>
+        <span class="brand-name">StuffManager</span>
+        <span class="brand-sub">Inventaire d'atelier</span>
+      </span>
+    </a>
+  </header>
+  <main class="content" id="contenu">
+    {% if error %}
+    <p class="errors" role="alert">{{ error }}</p>
+    {% endif %}
+    {% if message %}
+    <p class="banner" role="status">{{ message }}</p>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <nav class="tabbar" aria-label="Navigation">
+    <a href="/" {% if nav == 'home' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 8l9-4 9 4-9 4-9-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 8v8l9 4 9-4V8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12v8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      <span>Stock</span>
+    </a>
+    <a href="/emplacements" {% if nav == 'lieux' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M7 6v12M17 6v12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Lieux</span>
+    </a>
+    <a href="/categories" {% if nav == 'categories' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 12l8-8h8v8l-8 8-8-8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/></svg>
+      <span>Catégories</span>
+    </a>
+    <a class="tab-add" href="/composants/nouveau" {% if nav == 'ajouter' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Ajouter</span>
+    </a>
+  </nav>
+</body>
+</html>

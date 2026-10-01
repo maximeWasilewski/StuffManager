@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Supprimer {{ item.name }} — StuffManager{% endblock %}
+{% block content %}
+<h1>Supprimer ce composant ?</h1>
+<p class="lead">La fiche « {{ item.name }} » ({{ item.code }}) sera retirée de l'inventaire. Ce code ne sera pas réattribué. Une étiquette déjà imprimée ne mènera plus à une fiche.</p>
+<form method="post" action="/composants/{{ item.id }}/supprimer" class="stack">
+  <button class="danger-solid" type="submit">Supprimer définitivement</button>
+</form>
+<p><a class="button secondary" href="/composants/{{ item.id }}">Annuler</a></p>
+{% endblock %}

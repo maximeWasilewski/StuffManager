@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Catégories — StuffManager{% endblock %}
+{% block content %}
+<h1>Catégories</h1>
+<p class="lead">Elles servent à filtrer l'inventaire. Vous pouvez en ajouter, les renommer, ou supprimer celles qu'aucun composant n'utilise.</p>
+{% if not categories %}
+<section class="empty">
+  <p>Aucune catégorie. Ajoutez-en une pour pouvoir créer un composant.</p>
+</section>
+{% else %}
+<ul class="manage">
+  {% for c in categories %}
+  <li>
+    <form class="rename" method="post" action="/categories/{{ c.id }}/renommer" autocomplete="off">
+      <input name="nom" required maxlength="60" aria-label="Nom de la catégorie {{ c.name }}" value="{% if error_target == c.id %}{{ attempt }}{% else %}{{ c.name }}{% endif %}">
+      <button type="submit">Renommer</button>
+    </form>
+    <p class="meta">
+      {% if c.item_count == 0 %}Aucun composant
+      {% elif c.item_count == 1 %}1 composant
+      {% else %}{{ c.item_count }} composants
+      {% endif %}
+      {% if c.item_count > 0 %} — suppression impossible{% endif %}
+    </p>
+    {% if c.item_count == 0 %}
+    <form method="post" action="/categories/{{ c.id }}/supprimer" class="stack">
+      <button class="danger" type="submit">Supprimer</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+<h2>Nouvelle catégorie</h2>
+<form class="stack" method="post" action="/categories" autocomplete="off">
+  <label>
+    Nom
+    <input name="nom" required maxlength="60" placeholder="ex. Capteurs" value="{% if error_target == 'new' %}{{ attempt }}{% endif %}">
+  </label>
+  <button type="submit">Ajouter la catégorie</button>
+</form>
+{% endblock %}

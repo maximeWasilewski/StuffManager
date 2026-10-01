@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }} — StuffManager{% endblock %}
+{% block content %}
+<article class="fiche">
+  {% if item.has_photo %}
+  <img class="fiche-photo" src="/photos/{{ item.id }}.jpg" alt="Photo de {{ item.name }}">
+  {% else %}
+  <p class="photo-missing">Pas de photo</p>
+  {% endif %}
+  <p class="kicker">{{ item.category_name }}</p>
+  <h1>{{ item.name }}</h1>
+  {% if item.reference %}
+  <p class="reference">Réf. {{ item.reference }}</p>
+  {% endif %}
+  <p class="code">{{ item.code }}</p>
+
+  <section class="qty-block">
+    <h2>Quantité</h2>
+    <form class="qty-form" method="post" action="/composants/{{ item.id }}/quantite">
+      <button class="qty-set secondary" type="submit" name="action" value="set">Enregistrer la quantité</button>
+      <button class="qty-dec" type="submit" name="action" value="dec" aria-label="Diminuer la quantité">−</button>
+      <input class="qty-input" name="quantite" value="{{ item.quantity }}" inputmode="numeric" maxlength="7" aria-label="Quantité" autocomplete="off">
+      <button class="qty-inc" type="submit" name="action" value="inc" aria-label="Augmenter la quantité">+</button>
+    </form>
+    <p class="hint">Les boutons − et + modifient le stock d'une unité. « Enregistrer la quantité » écrit le nombre saisi.</p>
+  </section>
+
+  <dl class="facts">
+    <div>
+      <dt>Emplacement</dt>
+      <dd>
+        {% if item.location_id %}
+        <a href="/emplacements/{{ item.location_id }}">{{ item.location_name }}</a>
+        {% if item.spot %}<span class="spot">{{ item.spot }}</span>{% endif %}
+        {% else %}
+        <a href="/emplacements/sans">Sans emplacement</a>
+        {% endif %}
+      </dd>
+    </div>
+    <div>
+      <dt>Utilisation</dt>
+      <dd>{{ item.usage_label }}</dd>
+    </div>
+    <div>
+      <dt>Ajouté</dt>
+      <dd>{{ item.created_label }}</dd>
+    </div>
+  </dl>
+
+  {% if item.notes %}
+  <section>
+    <h2>Notes</h2>
+    <p class="notes">{{ item.notes }}</p>
+  </section>
+  {% endif %}
+
+  <section class="codes">
+    <h2>Code</h2>
+    <img class="barcode" src="/composants/{{ item.id }}/code128.png" alt="Code-barres {{ item.code }}">
+    <p class="code">{{ item.code }}</p>
+    <img class="qr" src="/composants/{{ item.id }}/qr.png" alt="QR code vers /composants/{{ item.id }}">
+    <p class="hint">Le QR contient le chemin <span class="code">/composants/{{ item.id }}</span>.</p>
+  </section>
+
+  <div class="actions">
+    <a class="button" href="/composants/{{ item.id }}/etiquette">Étiquette</a>
+    <a class="button secondary" href="/composants/{{ item.id }}/modifier">Modifier</a>
+    <a class="button danger" href="/composants/{{ item.id }}/supprimer">Supprimer</a>
+  </div>
+</article>
+{% endblock %}

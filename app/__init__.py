@@ -1,0 +1,1 @@
+"""StuffManager — inventaire d'atelier."""
