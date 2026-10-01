@@ -1,0 +1,22 @@
+name: StuffManager
+version: "1.0.0"
+slug: stuffmanager
+description: Inventaire d'atelier pour composants électroniques, câbles et petit matériel.
+url: https://github.com/maximeWasilewski/StuffManager
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+ingress: false
+webui: http://[HOST]:[PORT:8080]/
+ports:
+  "8080/tcp": 8080
+ports_description:
+  "8080/tcp": Interface web (téléphone et QR), sans ingress
+environment:
+  STUFFMANAGER_DATA: /data
+backup: cold
+options: {}
+schema: {}

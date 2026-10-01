@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Emplacements — StuffManager{% endblock %}
+{% block content %}
+<h1>Emplacements</h1>
+<p class="lead">Un tiroir, une boîte ou une étagère. Ouvrez un lieu pour voir tout ce qui y est rangé.</p>
+{% if locations or unassigned %}
+<ul class="dir">
+  {% for loc in locations %}
+  <li>
+    <a href="/emplacements/{{ loc.id }}">
+      <span class="dir-name">{{ loc.name }}</span>
+      <span class="count">{{ loc.item_count }}</span>
+    </a>
+  </li>
+  {% endfor %}
+  {% if unassigned %}
+  <li>
+    <a href="/emplacements/sans">
+      <span class="dir-name">Sans emplacement</span>
+      <span class="count">{{ unassigned }}</span>
+    </a>
+  </li>
+  {% endif %}
+</ul>
+{% else %}
+<section class="empty">
+  <p>Aucun emplacement pour l'instant. Créez un tiroir, une boîte ou une étagère, puis assignez-y des composants.</p>
+</section>
+{% endif %}
+<h2>Nouvel emplacement</h2>
+<form class="stack" method="post" action="/emplacements" autocomplete="off">
+  <label>
+    Nom
+    <input name="nom" required maxlength="60" value="{{ attempt }}" placeholder="ex. Tiroir résistances">
+  </label>
+  <button type="submit">Ajouter l'emplacement</button>
+</form>
+{% endblock %}
