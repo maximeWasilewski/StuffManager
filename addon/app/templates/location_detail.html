@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{% if unassigned %}Sans emplacement{% else %}{{ location.name }}{% endif %} — StuffManager{% endblock %}
+{% block content %}
+{% if unassigned %}
+<h1>Sans emplacement</h1>
+<p class="lead">Ces composants n'ont pas encore de lieu de rangement. Ouvrez une fiche pour le renseigner.</p>
+{% if items %}
+{% include "_cards.html" %}
+{% else %}
+<section class="empty">
+  <p>Aucun composant sans emplacement.</p>
+</section>
+{% endif %}
+{% else %}
+<h1>{{ location.name }}</h1>
+<p class="lead">
+  {% if items|length == 0 %}Aucun composant ici.
+  {% elif items|length == 1 %}1 composant rangé ici.
+  {% else %}{{ items|length }} composants rangés ici.
+  {% endif %}
+</p>
+{% if items %}
+{% include "_cards.html" %}
+{% else %}
+<section class="empty">
+  <p>Rien n'est assigné à cet emplacement. Modifiez une fiche et choisissez ce lieu.</p>
+</section>
+{% endif %}
+<section class="manage-block">
+  <h2>Renommer</h2>
+  <form class="rename" method="post" action="/emplacements/{{ location.id }}/renommer" autocomplete="off">
+    <input name="nom" required maxlength="60" value="{{ attempt }}" aria-label="Nouveau nom de l'emplacement">
+    <button type="submit">Renommer</button>
+  </form>
+  <h2>Supprimer</h2>
+  {% if location.item_count == 0 %}
+  <form method="post" action="/emplacements/{{ location.id }}/supprimer" class="stack">
+    <button class="danger" type="submit">Supprimer cet emplacement</button>
+  </form>
+  {% else %}
+  <p class="hint">Suppression impossible tant que des composants y sont rangés.</p>
+  {% endif %}
+</section>
+{% endif %}
+<p class="back"><a href="/emplacements">Tous les emplacements</a></p>
+{% endblock %}

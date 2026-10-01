@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Stock — StuffManager{% endblock %}
+{% block content %}
+{% if total == 0 and not filtered %}
+<section class="empty">
+  <h1>L'inventaire est vide</h1>
+  <p>Ajoutez un composant, un câble ou un outil. Vous pourrez le retrouver par nom, référence ou code, puis imprimer une étiquette.</p>
+  <a class="button" href="/composants/nouveau">Ajouter un composant</a>
+</section>
+{% else %}
+<h1>Stock</h1>
+<form class="search-form" method="get" action="/">
+  <label class="search" for="q">Recherche</label>
+  <input id="q" type="search" name="q" value="{{ q }}" placeholder="Nom, référence ou code" autocapitalize="none" autocomplete="off" spellcheck="false" enterkeyhint="search">
+  <details class="filters" {% if filters_open %}open{% endif %}>
+    <summary>Filtres</summary>
+    <div class="stack">
+      <label>
+        Catégorie
+        <select name="categorie">
+          <option value="">Toutes</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if categorie == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Emplacement
+        <select name="emplacement">
+          <option value="">Tous</option>
+          <option value="aucun" {% if emplacement == 'aucun' %}selected{% endif %}>Sans emplacement</option>
+          {% for loc in locations %}
+          <option value="{{ loc.id }}" {% if emplacement == loc.id|string %}selected{% endif %}>{{ loc.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Utilisation
+        <select name="niveau">
+          <option value="">Tous les niveaux</option>
+          {% for key, label in usage_levels.items() %}
+          <option value="{{ key }}" {% if niveau == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+  </details>
+  <div class="search-actions">
+    <button type="submit">Afficher</button>
+    {% if filtered %}
+    <a class="button secondary" href="/">Tout voir</a>
+    {% endif %}
+  </div>
+</form>
+{% if items %}
+<p class="count-line">{% if items|length == 1 %}1 composant{% else %}{{ items|length }} composants{% endif %}</p>
+{% include "_cards.html" %}
+{% else %}
+<section class="empty">
+  <h2>Aucun résultat</h2>
+  <p>{{ empty_hint or "Rien ne correspond. Essayez un autre mot, ou retirez un filtre." }}</p>
+  <a class="button secondary" href="/">Tout voir</a>
+</section>
+{% endif %}
+<script>
+  if (window.matchMedia("(min-width: 1100px)").matches) {
+    var field = document.getElementById("q");
+    if (field) field.focus();
+  }
+</script>
+{% endif %}
+{% endblock %}

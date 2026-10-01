@@ -1,0 +1,24 @@
+<ul class="cards">
+  {% for item in items %}
+  <li>
+    <a class="card" href="/composants/{{ item.id }}">
+      {% if item.has_photo %}
+      <img class="thumb" src="/photos/{{ item.id }}.jpg" alt="">
+      {% else %}
+      <span class="thumb thumb-empty" aria-hidden="true">{{ item.name[:1] }}</span>
+      {% endif %}
+      <span class="card-body">
+        <span class="card-title">{{ item.name }}</span>
+        <span class="card-meta">{{ item.category_name }} · {{ item.place_label }}</span>
+        {% if item.reference %}
+        <span class="card-ref">Réf. {{ item.reference }}</span>
+        {% endif %}
+        <span class="card-foot">
+          <span class="qty {% if item.quantity == 0 %}qty-zero{% endif %}">Qté {{ item.quantity }}</span>
+          <span class="usage">{{ item.usage_label }}</span>
+        </span>
+      </span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>

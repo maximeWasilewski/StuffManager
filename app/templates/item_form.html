@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Modifier {{ item.name }}{% else %}Nouveau composant{% endif %} — StuffManager{% endblock %}
+{% block content %}
+{% if not categories %}
+<section class="empty">
+  <h1>Aucune catégorie</h1>
+  <p>Créez d'abord une catégorie. Chaque composant en a une.</p>
+  <a class="button" href="/categories">Gérer les catégories</a>
+</section>
+{% else %}
+<h1>{% if item %}Modifier{% else %}Nouveau composant{% endif %}</h1>
+{% if not item %}
+<p class="lead">Une fiche par pièce. Le code-barres est créé à l'enregistrement.</p>
+{% endif %}
+{% if errors %}
+<div class="errors" role="alert">
+  <p>Le formulaire n'a pas été enregistré.</p>
+  <ul>
+    {% for err in errors %}
+    <li>{{ err }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+<form class="stack" method="post" enctype="multipart/form-data" autocomplete="off" action="{% if item %}/composants/{{ item.id }}{% else %}/composants{% endif %}">
+  <label>
+    Nom
+    <input name="nom" required maxlength="160" value="{{ values.nom }}" placeholder="ex. Résistance 10 kΩ">
+  </label>
+  <label>
+    Catégorie
+    <select name="categorie_id" required>
+      <option value="" {% if not values.categorie_id %}selected{% endif %}>Choisir…</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {% if values.categorie_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    Quantité
+    <input name="quantite" required inputmode="numeric" maxlength="7" value="{{ values.quantite }}" autocomplete="off">
+  </label>
+  <label>
+    Emplacement
+    <select name="emplacement_id">
+      <option value="" {% if not values.emplacement_id %}selected{% endif %}>— Aucun —</option>
+      {% for loc in locations %}
+      <option value="{{ loc.id }}" {% if values.emplacement_id == loc.id|string %}selected{% endif %}>{{ loc.name }}</option>
+      {% endfor %}
+    </select>
+    <span class="hint">Tiroir, boîte, étagère… <a href="/emplacements">Gérer les emplacements</a></span>
+  </label>
+  <label>
+    Détail dans l'emplacement
+    <span class="hint">Optionnel. Par exemple « compartiment 3 ».</span>
+    <input name="spot" maxlength="80" value="{{ values.spot }}" placeholder="ex. compartiment 3">
+  </label>
+  <fieldset class="choices-wrap">
+    <legend>Niveau d'utilisation</legend>
+    <div class="choices">
+      {% for key, label in usage_levels.items() %}
+      <label class="choice">
+        <input type="radio" name="niveau" value="{{ key }}" {% if values.niveau == key %}checked{% endif %} required>
+        <span>{{ label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <label>
+    Référence
+    <span class="hint">Optionnel. Valeur, modèle, longueur…</span>
+    <input name="reference" maxlength="80" value="{{ values.reference }}" placeholder="ex. 10kΩ, STM32F103" spellcheck="false" autocapitalize="none">
+  </label>
+  <label>
+    Notes
+    <span class="hint">Optionnel.</span>
+    <textarea name="notes" maxlength="4000" rows="4">{{ values.notes }}</textarea>
+  </label>
+  <label>
+    Photo
+    <span class="hint">Une seule photo. JPEG, PNG ou WebP, 8 Mo maximum. La nouvelle remplace l'ancienne.</span>
+    {% if item and item.has_photo %}
+    <img class="edit-photo" src="/photos/{{ item.id }}.jpg" alt="Photo actuelle de {{ item.name }}">
+    {% endif %}
+    <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
+  </label>
+  {% if item and item.has_photo %}
+  <label class="check">
+    <input type="checkbox" name="supprimer_photo" value="1">
+    <span>Retirer la photo</span>
+  </label>
+  {% endif %}
+  <div class="actions">
+    <button type="submit">{% if item %}Enregistrer les modifications{% else %}Enregistrer{% endif %}</button>
+    {% if item %}
+    <a class="button secondary" href="/composants/{{ item.id }}">Annuler</a>
+    {% else %}
+    <a class="button secondary" href="/">Annuler</a>
+    {% endif %}
+  </div>
+</form>
+{% endif %}
+{% endblock %}

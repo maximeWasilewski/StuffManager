@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Étiquette {{ item.code }} — StuffManager{% endblock %}
+{% block content %}
+<h1 class="no-print">Étiquette</h1>
+<p class="hint no-print">Aperçu pour une étiquette étroite (environ 62 mm). Dans la fenêtre d'impression, décochez les en-têtes et pieds de page pour un rendu plus propre.</p>
+<div class="sheet">
+  <article class="label">
+    <h1>{{ item.name }}</h1>
+    <p>{{ item.category_name }}</p>
+    <p class="label-place">{{ item.place_label }}</p>
+    <img class="label-barcode" src="/composants/{{ item.id }}/code128.png" alt="Code-barres {{ item.code }}">
+    <p class="code">{{ item.code }}</p>
+    <img class="label-qr" src="/composants/{{ item.id }}/qr.png" alt="QR code vers /composants/{{ item.id }}">
+  </article>
+</div>
+<div class="actions no-print">
+  <button type="button" id="print-btn">Imprimer</button>
+  <a class="button secondary" href="/composants/{{ item.id }}">Retour à la fiche</a>
+</div>
+<script>
+  document.getElementById("print-btn").addEventListener("click", function () {
+    window.print();
+  });
+</script>
+{% endblock %}
