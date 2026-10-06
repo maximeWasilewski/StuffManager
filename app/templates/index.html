@@ -1,14 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Stock — StuffManager{% endblock %}
+{% block page_class %}inventory-page{% endblock %}
 {% block content %}
+<div class="intro">
+  <div><p class="eyebrow">L’INVENTAIRE DE LA MAISON, EN CLAIR</p><h1>Votre maison, objet par objet.</h1><p class="lead">Rangez vos objets. Retrouvez leur emplacement. Gardez le stock à jour.</p></div>
+  <div class="stats" aria-label="Votre inventaire">
+    <div class="stat"><strong>{{ total }}</strong><span>{{ 'objet' if total == 1 else 'objets' }}</span></div>
+    <div class="stat"><strong>{{ locations|length }}</strong><span>{{ 'emplacement' if locations|length == 1 else 'emplacements' }}</span></div>
+    <div class="stat"><strong>{{ categories|length }}</strong><span>{{ 'catégorie' if categories|length == 1 else 'catégories' }}</span></div>
+  </div>
+</div>
 {% if total == 0 and not filtered %}
-<section class="empty">
-  <h1>L'inventaire est vide</h1>
+<section class="empty onboarding">
+  <span class="step-number" aria-hidden="true">01</span>
+  <div><h2>L'inventaire est vide</h2>
   <p>Ajoutez un objet de la maison : meuble, livre, ustensile, vêtement, outil… Vous pourrez le retrouver par nom, référence ou code, puis imprimer une étiquette.</p>
+  </div>
   <a class="button" href="/composants/nouveau">Ajouter un objet</a>
 </section>
 {% else %}
-<h1>Stock</h1>
+<div class="inventory-workspace">
+<section class="surface search-panel" aria-labelledby="search-title">
+<p class="eyebrow">01 / RETROUVER</p>
+<h2 id="search-title">Recherche et filtres</h2>
+<p class="section-hint">Un nom, une référence ou un code scanné.</p>
 <form class="search-form" method="get" action="/">
   <label class="search" for="q">Recherche</label>
   <input id="q" type="search" name="q" value="{{ q }}" placeholder="Nom, référence ou code" autocapitalize="none" autocomplete="off" spellcheck="false" enterkeyhint="search">
@@ -52,6 +67,9 @@
     {% endif %}
   </div>
 </form>
+</section>
+<section class="surface inventory-results" aria-labelledby="stock-title">
+<div class="section-heading"><div><p class="eyebrow">02 / LES OBJETS</p><h2 id="stock-title">{% if filtered %}Résultats de recherche{% else %}Stock de la maison{% endif %}</h2></div><a class="button secondary small" href="/composants/nouveau">+ Objet</a></div>
 {% if items %}
 <p class="count-line">{% if items|length == 1 %}1 objet{% else %}{{ items|length }} objets{% endif %}</p>
 {% include "_cards.html" %}
@@ -62,7 +80,12 @@
   <a class="button secondary" href="/">Tout voir</a>
 </section>
 {% endif %}
+</section>
+</div>
 <script>
+  if (window.matchMedia("(min-width: 761px)").matches) {
+    document.querySelector("details.filters").open = true;
+  }
   if (window.matchMedia("(min-width: 1100px)").matches) {
     var field = document.getElementById("q");
     if (field) field.focus();
