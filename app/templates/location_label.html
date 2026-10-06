@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Étiquette {{ location.name }} — StuffManager{% endblock %}
+{% block content %}
+<h1 class="no-print">Étiquette du lieu</h1>
+<p class="hint no-print">Scannez ce QR code avec l'appareil photo du téléphone pour ouvrir ce lieu et voir tous ses objets. Le téléphone doit pouvoir accéder à cette adresse :</p>
+<p class="no-print"><a class="location-url" href="{{ location_url }}">{{ location_url }}</a></p>
+<p class="hint no-print">Générez l'étiquette depuis l'adresse du serveur accessible au téléphone. Gardez cette adresse stable (IP réservée ou nom réseau). Aperçu d'environ 62 mm ; décochez les en-têtes et pieds de page dans la fenêtre d'impression.</p>
+<div class="sheet">
+  <article class="label">
+    <h1>{{ location.name }}</h1>
+    <p>Scannez pour voir les objets</p>
+    <img class="label-qr location-label-qr" src="{{ request.url_for('location_qr_image', location_id=location.id) }}" alt="QR code du lieu {{ location.name }}">
+    <p>StuffManager</p>
+  </article>
+</div>
+<div class="actions no-print">
+  <button type="button" id="print-btn">Imprimer</button>
+  <a class="button secondary" href="{{ request.url_for('location_qr_image', location_id=location.id) }}" download="lieu-{{ location.id }}.png">Télécharger le QR code</a>
+  <a class="button secondary" href="{{ location_url }}">Retour au lieu</a>
+</div>
+<script>
+  document.getElementById("print-btn").addEventListener("click", function () {
+    window.print();
+  });
+</script>
+{% endblock %}

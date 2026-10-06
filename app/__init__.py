@@ -1,1 +1,1 @@
-"""StuffManager — inventaire d'atelier."""
+"""StuffManager — inventaire de la maison."""

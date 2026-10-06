@@ -29,6 +29,14 @@ DEFAULT_CATEGORIES: tuple[str, ...] = (
     "Outil",
     "Consommable",
     "Autre",
+    "Cuisine",
+    "Mobilier",
+    "Décoration",
+    "Linge",
+    "Vêtement",
+    "Livre",
+    "Jeu",
+    "Jardin",
 )
 
 _MONTHS: tuple[str, ...] = (
@@ -176,6 +184,18 @@ def init_db(db_path: Path) -> None:
         )
         conn.execute(
             "INSERT OR IGNORE INTO meta (key, value) VALUES ('next_item_number', '1')"
+        )
+        # Location URLs appear on printed labels. Keep their high-water mark
+        # across deletions and restarts, including on pre-QR databases.
+        conn.execute(
+            """
+            INSERT INTO meta (key, value)
+            VALUES ('next_location_number',
+                    (SELECT CAST(COALESCE(MAX(id), 0) + 1 AS TEXT) FROM locations))
+            ON CONFLICT(key) DO UPDATE SET value = CAST(MAX(
+                CAST(meta.value AS INTEGER), CAST(excluded.value AS INTEGER)
+            ) AS TEXT)
+            """
         )
         count = conn.execute("SELECT COUNT(*) AS c FROM categories").fetchone()["c"]
         if count == 0:
@@ -347,7 +367,7 @@ def delete_category(conn: sqlite3.Connection, category_id: int) -> None:
         raise KeyError(category_id)
     if category["item_count"]:
         raise ValueError(
-            "Impossible de supprimer une catégorie encore utilisée par des composants."
+            "Impossible de supprimer une catégorie encore utilisée par des objets."
         )
     conn.execute("DELETE FROM categories WHERE id = ?", (category_id,))
 
@@ -356,9 +376,18 @@ def create_location(conn: sqlite3.Connection, name: str) -> int:
     if _label_taken(conn, "locations", name):
         raise ValueError("Cet emplacement existe déjà.")
     try:
+        row = conn.execute(
+            """
+            UPDATE meta SET value = CAST(value AS INTEGER) + 1
+            WHERE key = 'next_location_number' RETURNING value
+            """
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("Compteur de lieux absent.")
+        location_id = int(row["value"]) - 1
         cursor = conn.execute(
-            "INSERT INTO locations (name, created_at) VALUES (?, ?)",
-            (name, now_iso()),
+            "INSERT INTO locations (id, name, created_at) VALUES (?, ?, ?)",
+            (location_id, name, now_iso()),
         )
     except sqlite3.IntegrityError as exc:
         raise ValueError("Cet emplacement existe déjà.") from exc
@@ -385,7 +414,7 @@ def delete_location(conn: sqlite3.Connection, location_id: int) -> None:
         raise KeyError(location_id)
     if location["item_count"]:
         raise ValueError(
-            "Impossible de supprimer un emplacement qui contient encore des composants."
+            "Impossible de supprimer un emplacement qui contient encore des objets."
         )
     conn.execute("DELETE FROM locations WHERE id = ?", (location_id,))
 

@@ -99,7 +99,7 @@ def qr_png(payload: str) -> bytes:
     code = qrcode.QRCode(
         error_correction=qrcode.constants.ERROR_CORRECT_M,
         box_size=8,
-        border=2,
+        border=4,
     )
     code.add_data(payload)
     code.make(fit=True)

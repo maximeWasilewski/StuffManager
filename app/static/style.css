@@ -684,6 +684,9 @@ input[type="file"] {
   .facts div { grid-template-columns: 1fr; gap: 2px; }
 }
 
+.location-url { overflow-wrap: anywhere; }
+.location-label-qr { width: 32mm; height: 32mm; }
+
 @media print {
   body { padding: 0; background: #fff; }
   .shell { display: block; min-height: 0; }

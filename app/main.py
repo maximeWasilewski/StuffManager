@@ -67,9 +67,9 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals["usage_levels"] = USAGE_LEVELS
 
 MESSAGES = {
-    "cree": "Composant enregistré.",
+    "cree": "Objet enregistré.",
     "modifie": "Modifications enregistrées.",
-    "supprime": "Composant supprimé.",
+    "supprime": "Objet supprimé.",
     "quantite": "Quantité mise à jour.",
     "categorie-ajoutee": "Catégorie ajoutée.",
     "categorie-renommee": "Catégorie renommée.",
@@ -202,7 +202,7 @@ async def home(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
         )
         attach_photos(items, request.app.state.photos_dir)
         if not items and re.fullmatch(r"SM-\d{6}", q, re.IGNORECASE):
-            empty_hint = "Aucun composant ne porte ce code."
+            empty_hint = "Aucun objet ne porte ce code."
 
     filtered = bool(q or category_id or unassigned or location_id or usage)
     return render(
@@ -623,6 +623,39 @@ async def location_detail(
         items=items,
         error=None,
         attempt=location["name"],
+    )
+
+
+@router.get("/emplacements/{location_id}/qr.png")
+async def location_qr_image(
+    location_id: int,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_conn),
+):
+    if get_location(conn, location_id) is None:
+        raise HTTPException(status_code=404)
+    return Response(
+        content=qr_png(str(request.url_for("location_detail", location_id=location_id))),
+        media_type="image/png",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.get("/emplacements/{location_id}/etiquette")
+async def location_label(
+    location_id: int,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_conn),
+):
+    location = get_location(conn, location_id)
+    if location is None:
+        raise HTTPException(status_code=404)
+    return render(
+        request,
+        "location_label.html",
+        nav="lieux",
+        location=location,
+        location_url=str(request.url_for("location_detail", location_id=location_id)),
     )
 
 

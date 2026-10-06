@@ -1,7 +1,7 @@
 name: StuffManager
-version: "1.1.0"
+version: "1.2.0"
 slug: stuffmanager
-description: Inventaire d'atelier pour composants électroniques, câbles et petit matériel.
+description: Inventaire des objets de la maison avec QR codes pour les lieux de rangement.
 url: https://github.com/maximeWasilewski/StuffManager
 arch:
   - aarch64

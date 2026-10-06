@@ -2,7 +2,7 @@
 {% block title %}Catégories — StuffManager{% endblock %}
 {% block content %}
 <h1>Catégories</h1>
-<p class="lead">Elles servent à filtrer l'inventaire. Vous pouvez en ajouter, les renommer, ou supprimer celles qu'aucun composant n'utilise. Le bouton Suivi active le suivi d'utilisation pour cette catégorie seulement.</p>
+<p class="lead">Elles servent à filtrer l'inventaire. Vous pouvez en ajouter, les renommer, ou supprimer celles qu'aucun objet n'utilise. Le bouton Suivi active le suivi d'utilisation pour cette catégorie seulement.</p>
 <form class="cat-create" method="post" action="/categories" autocomplete="off">
   <label for="nouvelle-categorie">Nouvelle catégorie</label>
   <div class="cat-create-row">
@@ -12,7 +12,7 @@
 </form>
 {% if not categories %}
 <section class="empty">
-  <p>Aucune catégorie. Ajoutez-en une pour pouvoir créer un composant.</p>
+  <p>Aucune catégorie. Ajoutez-en une pour pouvoir créer un objet.</p>
 </section>
 {% else %}
 <ul class="cat-list">

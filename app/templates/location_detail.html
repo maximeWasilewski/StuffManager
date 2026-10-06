@@ -3,20 +3,23 @@
 {% block content %}
 {% if unassigned %}
 <h1>Sans emplacement</h1>
-<p class="lead">Ces composants n'ont pas encore de lieu de rangement. Ouvrez une fiche pour le renseigner.</p>
+<p class="lead">Ces objets n'ont pas encore de lieu de rangement. Ouvrez une fiche pour le renseigner.</p>
 {% if items %}
 {% include "_cards.html" %}
 {% else %}
 <section class="empty">
-  <p>Aucun composant sans emplacement.</p>
+  <p>Aucun objet sans emplacement.</p>
 </section>
 {% endif %}
 {% else %}
 <h1>{{ location.name }}</h1>
+<div class="actions">
+  <a class="button" href="/emplacements/{{ location.id }}/etiquette">QR code / Étiquette du lieu</a>
+</div>
 <p class="lead">
-  {% if items|length == 0 %}Aucun composant ici.
-  {% elif items|length == 1 %}1 composant rangé ici.
-  {% else %}{{ items|length }} composants rangés ici.
+  {% if items|length == 0 %}Aucun objet ici.
+  {% elif items|length == 1 %}1 objet rangé ici.
+  {% else %}{{ items|length }} objets rangés ici.
   {% endif %}
 </p>
 {% if items %}
@@ -38,7 +41,7 @@
     <button class="danger" type="submit">Supprimer cet emplacement</button>
   </form>
   {% else %}
-  <p class="hint">Suppression impossible tant que des composants y sont rangés.</p>
+  <p class="hint">Suppression impossible tant que des objets y sont rangés.</p>
   {% endif %}
 </section>
 {% endif %}
