@@ -4,8 +4,8 @@
 {% if total == 0 and not filtered %}
 <section class="empty">
   <h1>L'inventaire est vide</h1>
-  <p>Ajoutez un composant, un câble ou un outil. Vous pourrez le retrouver par nom, référence ou code, puis imprimer une étiquette.</p>
-  <a class="button" href="/composants/nouveau">Ajouter un composant</a>
+  <p>Ajoutez un objet de la maison : meuble, livre, ustensile, vêtement, outil… Vous pourrez le retrouver par nom, référence ou code, puis imprimer une étiquette.</p>
+  <a class="button" href="/composants/nouveau">Ajouter un objet</a>
 </section>
 {% else %}
 <h1>Stock</h1>
@@ -53,7 +53,7 @@
   </div>
 </form>
 {% if items %}
-<p class="count-line">{% if items|length == 1 %}1 composant{% else %}{{ items|length }} composants{% endif %}</p>
+<p class="count-line">{% if items|length == 1 %}1 objet{% else %}{{ items|length }} objets{% endif %}</p>
 {% include "_cards.html" %}
 {% else %}
 <section class="empty">

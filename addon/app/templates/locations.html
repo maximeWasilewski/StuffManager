@@ -2,7 +2,7 @@
 {% block title %}Emplacements — StuffManager{% endblock %}
 {% block content %}
 <h1>Emplacements</h1>
-<p class="lead">Un tiroir, une boîte ou une étagère. Ouvrez un lieu pour voir tout ce qui y est rangé.</p>
+<p class="lead">Une pièce, un placard, un tiroir, une boîte ou une étagère. Ouvrez un lieu pour voir tout ce qui y est rangé.</p>
 {% if locations or unassigned %}
 <ul class="dir">
   {% for loc in locations %}
@@ -24,14 +24,14 @@
 </ul>
 {% else %}
 <section class="empty">
-  <p>Aucun emplacement pour l'instant. Créez un tiroir, une boîte ou une étagère, puis assignez-y des composants.</p>
+  <p>Aucun emplacement pour l'instant. Créez une pièce, un placard ou une boîte, puis assignez-y des objets.</p>
 </section>
 {% endif %}
 <h2>Nouvel emplacement</h2>
 <form class="stack" method="post" action="/emplacements" autocomplete="off">
   <label>
     Nom
-    <input name="nom" required maxlength="60" value="{{ attempt }}" placeholder="ex. Tiroir résistances">
+    <input name="nom" required maxlength="60" value="{{ attempt }}" placeholder="ex. Placard de la cuisine">
   </label>
   <button type="submit">Ajouter l'emplacement</button>
 </form>

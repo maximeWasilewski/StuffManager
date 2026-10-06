@@ -91,6 +91,14 @@ def test_database_init_is_idempotent(tmp_path):
         "Outil",
         "Consommable",
         "Autre",
+        "Cuisine",
+        "Mobilier",
+        "Décoration",
+        "Linge",
+        "Vêtement",
+        "Livre",
+        "Jeu",
+        "Jardin",
     }
 
 

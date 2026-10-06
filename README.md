@@ -1,22 +1,22 @@
 # StuffManager
 
-Inventaire d'atelier pour retrouver composants électroniques, câbles, connectique et petit matériel. L'application tourne sur un Raspberry Pi, sur le réseau local : une seule personne, pas de compte utilisateur.
+Inventaire de la maison pour retrouver tous vos objets : meubles, livres, vêtements, ustensiles, outils, électronique… L'application tourne sur un Raspberry Pi, sur le réseau local : une seule personne, pas de compte utilisateur.
 
-L'interface est en français et se lit sur un téléphone, dans l'atelier.
+L'interface est en français et se lit sur un téléphone, dans toute la maison.
 
 ## Ce que fait l'application
 
-- Une fiche par composant : nom, catégorie, quantité, emplacement, niveau d'utilisation, photo, notes, référence. Une catégorie peut activer le suivi d'utilisation : on note alors combien sont utilisés, et le disponible est la quantité moins les utilisés.
+- Une fiche par objet : nom, catégorie, quantité, emplacement, niveau d'utilisation, photo, notes, référence. Une catégorie peut activer le suivi d'utilisation : on note alors combien sont utilisés, et le disponible est la quantité moins les utilisés.
 - Recherche par nom, référence ou code, et filtres par catégorie, emplacement ou niveau d'utilisation.
 - Les emplacements (tiroir, boîte, étagère…) listent tout ce qui est rangé au même endroit. On peut en ajouter, les renommer, et supprimer ceux qui sont vides.
-- Même chose pour les catégories, tant qu'aucun composant ne les utilise. Le suivi d'utilisation se règle catégorie par catégorie, et il est coupé par défaut.
+- Même chose pour les catégories, tant qu'aucun objet ne les utilise. Le suivi d'utilisation se règle catégorie par catégorie, et il est coupé par défaut.
 - Une étiquette imprimable : nom, catégorie, emplacement, code-barres, code lisible et QR.
 
-Catégories de départ : Câble, Électronique, Connectique, Outil, Consommable, Autre. Elles ne sont pas verrouillées.
+Catégories de départ : Cuisine, Mobilier, Décoration, Linge, Vêtement, Livre, Jeu, Jardin, Câble, Électronique, Connectique, Outil, Consommable, Autre. Elles ne sont pas verrouillées.
 
 Niveaux d'utilisation : Jamais, Rare, Occasionnel, Fréquent.
 
-L'emplacement peut rester vide le temps de cataloguer une pièce. La quantité de départ proposée est 1, le niveau « Occasionnel ».
+L'emplacement peut rester vide le temps de cataloguer un objet. La quantité de départ proposée est 1, le niveau « Occasionnel ».
 
 ## Lancer sur un Raspberry Pi avec Docker
 
@@ -76,21 +76,38 @@ Plus tard, le même dépôt GitHub pourra être ajouté comme dépôt de modules
 
 Avec Docker Compose, tout est dans le dossier `data/` à la racine du projet. Il n'est pas versionné. Sur Home Assistant OS, voir la section précédente : les mêmes fichiers sont sous `/data` dans le module.
 
-- `data/stuffmanager.db` — base SQLite (composants, catégories, emplacements, compteur de codes)
+- `data/stuffmanager.db` — base SQLite (objets, catégories, emplacements, compteur de codes)
 - `data/photos/` — une photo JPEG par fiche
 
 `docker-compose.yml` monte `./data` dans le conteneur. Supprimer le conteneur ne supprime pas ce dossier.
 
 Pour une sauvegarde : arrêter l'application, puis copier `data/`.
 
-Au démarrage, les tables manquantes sont créées, et les colonnes manquantes sont ajoutées à une base déjà en place (y compris `/data/stuffmanager.db` sur Home Assistant). Les six catégories de départ ne sont ajoutées que si la table des catégories est vide.
+Au démarrage, les tables manquantes sont créées, et les colonnes manquantes sont ajoutées à une base déjà en place (y compris `/data/stuffmanager.db` sur Home Assistant). Les catégories de départ ne sont ajoutées que si la table des catégories est vide.
 
-## Codes-barres et QR
+## QR codes des lieux
 
-À la création, chaque composant reçoit un code stable de la forme `SM-000001`. Le numéro suivant ne revient pas en arrière : une fiche supprimée ne libère pas son code, et l'adresse `/composants/{id}` n'est pas réutilisée.
+Ouvrez **Emplacements**, choisissez un lieu, puis **QR code / Étiquette du lieu**.
+Vous pouvez imprimer une étiquette avec son nom ou télécharger le QR code en PNG.
+Le QR contient l'adresse complète du lieu (par exemple `http://192.168.1.20:8080/emplacements/3`).
+Un scan avec l'appareil photo du téléphone ouvre directement sa page et tous les objets qui y sont rangés.
+
+Créez l'étiquette en ouvrant StuffManager depuis l'adresse accessible au téléphone,
+pas depuis `localhost`. Le téléphone doit pouvoir joindre le serveur, généralement sur le même réseau local.
+Réservez l'adresse IP du Pi ou utilisez un nom réseau stable : si l'adresse ou le port change,
+réimprimez les QR codes. Renommer un lieu ne change pas son lien ; après suppression,
+son lien renvoie une page introuvable et son identifiant n'est jamais réattribué.
+
+Les catégories, objets, photos et lieux existants sont conservés lors de la mise à jour.
+Les nouvelles catégories de départ ne sont créées que pour un inventaire sans catégories ;
+sur une installation existante, ajoutez celles qui vous intéressent dans **Catégories**.
+
+## Codes-barres et QR des objets
+
+À la création, chaque objet reçoit un code stable de la forme `SM-000001`. Le numéro suivant ne revient pas en arrière : une fiche supprimée ne libère pas son code, et l'adresse `/composants/{id}` n'est pas réutilisée.
 
 - **Code 128** : image du code `SM-000001`. Avec une douchette qui saisit au clavier, taper dans la recherche (ou scanner, si le champ a le focus) : un code exact ouvre la fiche.
-- **QR** : il contient le chemin relatif `/composants/{id}` (par exemple `/composants/12`), pas l'adresse complète du Pi. Il identifie la fiche sur ce serveur. La recherche accepte aussi ce chemin. L'appareil photo du téléphone ne peut pas ouvrir une adresse relative tout seul.
+- **QR des objets** : il contient le chemin relatif `/composants/{id}` (par exemple `/composants/12`), pas l'adresse complète du Pi. Il identifie la fiche sur ce serveur. La recherche accepte aussi ce chemin. L'appareil photo du téléphone ne peut pas ouvrir une adresse relative tout seul.
 - **Étiquette** : le bouton Imprimer ouvre la fenêtre d'impression du navigateur. L'aperçu est calé sur une largeur d'environ 62 mm. Décochez les en-têtes et pieds de page du navigateur pour un sticker plus propre.
 
 ## Photos
