@@ -1,3 +1,9 @@
+# 1.5.1
+
+- Reconnaissance ChatGPT : conserve le texte transmis avant l'événement de fin, sans accepter de réponse interrompue.
+- Demande explicite du format JSON et prise en charge des réponses JSON encadrées en Markdown.
+- Messages distincts pour une réponse illisible, un refus, une interruption et un objet non identifié.
+
 # 1.5.0
 
 - Connexion officielle ChatGPT pour utiliser un abonnement Plus ou Pro éligible.
