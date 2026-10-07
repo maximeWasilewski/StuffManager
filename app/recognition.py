@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import logging
 import os
 import re
 import socket
@@ -18,6 +19,7 @@ from app.db import fold
 from app.chatgpt_auth import AuthError
 
 DEFAULT_MODEL = "gpt-4.1-mini"
+logger = logging.getLogger(__name__)
 
 
 class RecognitionError(ValueError):
@@ -70,7 +72,13 @@ def _recognize(photo: bytes, key: str, model: str, categories: list[str], *, cha
             "présents ou si l'image est floue, confidence=uncertain, indique ce qu'il faut "
             "vérifier dans notes. name <=160 caractères, reference <=80, notes <=800. "
             "Choisis category uniquement parmi les catégories fournies, sinon chaîne vide. "
-            "N'estime pas le nombre d'objets, l'utilisateur saisira la quantité."
+            "N'estime pas le nombre d'objets, l'utilisateur saisira la quantité. "
+            "Réponds uniquement avec un objet JSON, sans Markdown ni explication extérieure, "
+            "avec exactement les clés name, category, reference, confidence, notes. "
+            "Toutes les valeurs sont des chaînes, confidence vaut certain, probable ou uncertain. "
+            "Si l'identification est partielle, donne le nom visible et confidence=uncertain. "
+            'Exemple de format : {"name":"Câble USB-A vers USB-C","category":"",'
+            '"reference":"","confidence":"probable","notes":""}.'
         ),
         "input": [{"role": "user", "content": [
             {"type": "input_text", "text": "Catégories possibles : " + json.dumps(categories, ensure_ascii=False)},
@@ -108,13 +116,26 @@ def _recognize(photo: bytes, key: str, model: str, categories: list[str], *, cha
         raise RecognitionError(messages.get(exc.code, "L'analyse OpenAI est indisponible pour le moment.")) from None
     except (URLError, TimeoutError, socket.timeout, OSError):
         raise RecognitionError("Impossible de joindre OpenAI. Vous pouvez identifier l'objet manuellement.") from None
+    except RecognitionError:
+        raise
     except (ValueError, TypeError):
         raise RecognitionError("La réponse d'analyse est illisible. Identifiez l'objet manuellement.") from None
     try:
         if result.get("status") != "completed":
-            raise ValueError("Incomplete response")
+            raise RecognitionError("L'analyse a été interrompue avant sa fin. Réessayez.")
+        if any(part.get("type") == "refusal" for item in result.get("output", [])
+               for part in item.get("content", [])):
+            raise RecognitionError("Le modèle a refusé d'analyser cette photo. Essayez une autre photo ou identifiez l'objet manuellement.")
         output = "".join(part["text"] for item in result.get("output", [])
                          for part in item.get("content", []) if part.get("type") == "output_text")
+        if not output.strip():
+            raise ValueError("empty_output")
+        # Some transports/models wrap otherwise valid JSON in a Markdown fence.
+        output = output.strip()
+        if output.startswith("```"):
+            match = re.fullmatch(r"```(?:json)?\s*\n(.*?)\n```", output, re.DOTALL | re.IGNORECASE)
+            if match:
+                output = match.group(1)
         analysis = json.loads(output)
         if not isinstance(analysis, dict) or set(analysis) != set(SCHEMA["required"]):
             raise ValueError("Invalid response")
@@ -126,14 +147,25 @@ def _recognize(photo: bytes, key: str, model: str, categories: list[str], *, cha
             analysis[field] = analysis[field].strip()[:length]
         if analysis["category"] not in categories:
             analysis["category"] = ""
+        if not analysis["name"]:
+            raise RecognitionError("ChatGPT n'a pas identifié d'objet sur cette photo. Montrez l'objet de plus près, avec ses connecteurs visibles.")
         return analysis
-    except (ValueError, TypeError, KeyError, AttributeError):
-        raise RecognitionError("L'objet n'a pas pu être identifié. Renseignez son nom manuellement.") from None
+    except RecognitionError:
+        raise
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        # Never log the response, photo, credentials or exception text.
+        logger.warning("Photo recognition: invalid response format (provider=%s, error=%s)",
+                       "chatgpt" if chatgpt else "api", type(exc).__name__)
+        raise RecognitionError("La réponse de ChatGPT n'a pas le format attendu. Réessayez ; si cela persiste, choisissez un autre modèle dans Connexion ChatGPT.") from None
 
 
 def read_completed_stream(response):
     """Bounded SSE parsing; accept output only after response.completed."""
     size, event_data = 0, []
+    # Terminal responses may omit output already delivered by earlier events.
+    # Keep text by output/content index to avoid duplicating delta/done content.
+    texts = {}
+    items = {}
     for raw in response:
         size += len(raw)
         if size > 1_000_000:
@@ -149,10 +181,31 @@ def read_completed_stream(response):
             event = json.loads(payload)
             if not isinstance(event, dict):
                 raise ValueError("Invalid stream event")
+            event_type = event.get("type")
+            index = (event.get("output_index", 0), event.get("content_index", 0))
+            if event_type == "response.output_text.delta":
+                texts[index] = texts.get(index, "") + event["delta"]
+            elif event_type == "response.output_text.done":
+                texts[index] = event["text"]
+            elif event_type == "response.output_item.done":
+                items[event.get("output_index", 0)] = event["item"]
             if event.get("type") == "response.completed":
                 if not isinstance(event.get("response"), dict):
                     raise ValueError("Invalid completed response")
-                return event["response"]
+                result = dict(event["response"])
+                if result.get("status") != "completed":
+                    raise RecognitionError("L'analyse ChatGPT a été interrompue avant sa fin. Réessayez.")
+                def has_answer(output):
+                    return any(part.get("type") in {"output_text", "refusal"}
+                               for item in output for part in item.get("content", []))
+                if not has_answer(result.get("output") or []):
+                    output = [items[key] for key in sorted(items)]
+                    if not has_answer(output):
+                        output = [{"type": "message", "content": [
+                            {"type": "output_text", "text": texts[key]} for key in sorted(texts)
+                        ]}]
+                    result["output"] = output
+                return result
             if event.get("type") in {"error", "response.failed", "response.incomplete"}:
                 raise RecognitionError("L'analyse ChatGPT n'a pas abouti. Vérifiez votre connexion et les limites de votre abonnement.")
     raise RecognitionError("L'analyse ChatGPT a été interrompue. Réessayez ou identifiez l'objet manuellement.")

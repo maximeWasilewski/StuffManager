@@ -1,5 +1,5 @@
 name: StuffManager
-version: "1.5.0"
+version: "1.5.1"
 slug: stuffmanager
 description: Inventaire des objets de la maison avec QR codes pour les lieux de rangement.
 url: https://github.com/maximeWasilewski/StuffManager
