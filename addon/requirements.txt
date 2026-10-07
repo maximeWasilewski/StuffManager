@@ -6,3 +6,4 @@ pillow==12.3.0
 pillow-heif==1.8.0
 python-barcode==0.16.1
 qrcode==8.2
+PyJWT[crypto]==2.10.1

@@ -269,3 +269,4 @@ summary { min-height: 44px; font-size: 12px; font-weight: 600; cursor: pointer; 
 @media (max-width: 400px) {
   .quick-merge { flex-direction: column; align-items: stretch; }
 }
+.connection-commands { overflow-x: auto; padding: 16px; background: var(--soft); border-radius: 10px; font-size: 12px; }

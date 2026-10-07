@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Connexion ChatGPT — StuffManager{% endblock %}
+{% block content %}
+<p class="eyebrow">AJOUT RAPIDE / CONNEXION</p>
+<h1>Votre abonnement, vos objets.</h1>
+<p class="lead">Connectez un compte ChatGPT Plus ou Pro éligible pour les analyses de photos. Elles consomment les limites de votre abonnement, sans clé API.</p>
+{% if chatgpt.connected %}<p class="banner">Vous utilisez votre forfait ChatGPT. <a href="https://chatgpt.com/#settings/Usage" target="_blank" rel="noopener noreferrer">Gérer mon utilisation dans ChatGPT</a>.</p>{% endif %}
+<div class="quick-decisions">
+{% for account in chatgpt.accounts %}
+<section class="surface">
+  <h2>Connexion {{ account.id[:6] }}{% if account.active %} · active{% endif %}</h2>
+  <p>{{ account.email or 'Compte ChatGPT' }}</p>
+  {% if account.connected %}
+  <form class="stack" method="post" action="/chatgpt/choisir">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="account" value="{{ account.id }}">
+    {% if account.active %}<label>Modèle pour les photos<select name="model">{% for model in models %}<option value="{{ model.slug }}" {% if model.slug == account.model %}selected{% endif %}>{{ model.name }}</option>{% endfor %}</select></label><p class="hint">Les modèles proposés viennent de votre compte. Choisissez un modèle acceptant les images.</p>{% endif %}
+    <button type="submit">{% if account.active %}Enregistrer le modèle{% else %}Utiliser cette connexion{% endif %}</button>
+  </form>
+  <form method="post" action="/chatgpt/deconnecter"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="account" value="{{ account.id }}"><button type="submit" class="secondary">Déconnecter cette connexion</button></form>
+  {% elif local %}<form method="post" action="/chatgpt/connecter"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="account" value="{{ account.id }}"><button type="submit">Continue with ChatGPT</button></form>
+  {% else %}<p class="hint">Utilisez l'assistant ci-dessous pour reconnecter ce compte.</p>{% endif %}
+</section>
+{% endfor %}
+{% if local %}
+<section class="surface"><h2>Connecter un compte</h2><p>OpenAI vous demandera l'autorisation d'utiliser votre forfait. StuffManager n'accède pas à vos conversations.</p><form method="post" action="/chatgpt/connecter"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Continue with ChatGPT</button></form></section>
+{% endif %}
+<section class="surface">
+  <h2>Connexion pour Home Assistant</h2>
+  <p>Cette étape se fait une seule fois sur un PC avec Python 3.12 ou plus. Ensuite, vous pourrez prendre les photos depuis votre téléphone.</p>
+  <ol><li>Téléchargez l'assistant et extrayez le fichier ZIP.</li><li>Dans le dossier extrait, exécutez les deux commandes ci-dessous.</li><li>Connectez-vous sur la page officielle OpenAI et autorisez l'utilisation du forfait.</li><li>Importez le fichier <strong>connexion-stuffmanager.chatgpt</strong> créé par l'assistant.</li></ol>
+  <form method="post" action="/chatgpt/assistant"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Télécharger l'assistant de connexion</button></form>
+  <pre class="connection-commands"><code>python -m pip install -r requirements.txt
+python connect_chatgpt.py</code></pre>
+  <p class="hint">Sous Windows, utilisez <code>py</code> à la place de <code>python</code> si nécessaire. Le fichier de connexion est chiffré pour ce module et reste importable pendant une heure. Un nouveau téléchargement remplace la tentative précédente.</p>
+  <p class="hint">Pour ajouter un autre compte ou espace ChatGPT, lancez <code>python connect_chatgpt.py --new-account</code>.</p>
+  <form class="stack" method="post" action="/chatgpt/importer" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Fichier de connexion chiffré<input type="file" name="connexion" accept=".chatgpt" required></label><button type="submit">Activer la connexion ChatGPT</button></form>
+</section>
+</div>
+<p class="back"><a href="/ajout-rapide">Revenir à l'ajout rapide</a></p>
+{% endblock %}

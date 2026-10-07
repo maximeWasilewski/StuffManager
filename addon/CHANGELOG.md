@@ -1,3 +1,10 @@
+# 1.5.0
+
+- Connexion officielle ChatGPT pour utiliser un abonnement Plus ou Pro éligible.
+- Assistant PC et import chiffré pour Home Assistant, renouvellement automatique de la connexion.
+- Choix explicite ChatGPT / API / manuel, sans basculement payant automatique.
+- Messages distincts pour les crédits API insuffisants et les limites temporaires.
+
 # 1.4.0
 
 - Ajout rapide par photo, avec reconnaissance des câbles via OpenAI (clé API facultative).

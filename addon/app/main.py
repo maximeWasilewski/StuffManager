@@ -59,6 +59,8 @@ from app.images import (
     write_photo,
 )
 from app.quick_routes import create_quick_router
+from app.chatgpt_auth import ChatGPTStore
+from app.chatgpt_routes import create_chatgpt_router
 
 APP_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = APP_DIR / "templates"
@@ -847,9 +849,14 @@ def create_app(data_dir: str | Path) -> FastAPI:
     application.state.data_dir = data_path
     application.state.photos_dir = photos_dir
     application.state.db_path = db_path
+    application.state.chatgpt = ChatGPTStore(data_path)
 
     @application.middleware("http")
     async def extra_headers(request: Request, call_next):
+        if request.url.path == "/auth/callback":
+            # Keep authorization codes out of the ASGI server's access log.
+            request.state.oauth_query = list(request.query_params.multi_items())
+            request.scope["query_string"] = b""
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
@@ -859,6 +866,7 @@ def create_app(data_dir: str | Path) -> FastAPI:
 
     application.include_router(router)
     application.include_router(create_quick_router(render, get_conn, redirect))
+    application.include_router(create_chatgpt_router(render))
 
     @application.exception_handler(404)
     async def not_found(request: Request, _exc: Exception):
