@@ -72,6 +72,71 @@ Elles restent en place si vous reconstruisez ou mettez à jour le module. Une sa
 
 Plus tard, le même dépôt GitHub pourra être ajouté comme dépôt de modules : il contient `repository.json` à la racine. L'URL à coller dans la boutique est `https://github.com/maximeWasilewski/StuffManager`.
 
+## Ajout rapide par photo (1.4.0)
+
+Ouvrez **Ajout rapide** dans la navigation. Prenez une photo de l'objet ou choisissez
+une image dans la galerie ; pour un câble, montrez les deux connecteurs côte à côte.
+La proposition d'identification reste à vérifier : une photo ne permet pas de déduire
+une puissance, une vitesse de transfert ou une longueur non inscrite sur le câble.
+
+StuffManager recherche ensuite des fiches similaires dans tout l'inventaire, par
+leurs noms, références et connecteurs connus. Il écarte les extrémités explicitement
+incompatibles. Cette recherche est une proposition, pas une garantie de doublon :
+vérifiez notamment la longueur, les connecteurs mâles/femelles et la référence.
+Le champ de recherche permet de corriger l'identification ou de retrouver une fiche
+nommée différemment. Jusqu'à 12 propositions sont affichées.
+
+- **Déjà en stock** : choisissez la fiche et la quantité à ajouter. Le rangement
+  exact (emplacement et détail), la photo existante et le nombre d'objets utilisés
+  restent en place ; les nouveaux objets sont disponibles.
+- **Nouvel objet** : corrigez le nom, la catégorie et l'emplacement, puis confirmez.
+  La photo est conservée sur la nouvelle fiche.
+- **Sans clé ou analyse indisponible** : la photo reste utilisable et le parcours
+  fonctionne en identification manuelle.
+
+Aucun objet n'est créé ni aucune quantité modifiée pendant l'analyse. Une double
+confirmation ne compte qu'une fois. Si le stock ou le rangement change entre la
+proposition et la confirmation, l'application demande de vérifier à nouveau.
+
+### Activer la reconnaissance dans Home Assistant
+
+Après fusion de la version 1.4.0 et mise à jour du module, ouvrez **Configuration** :
+
+```yaml
+openai_api_key: "votre-cle-API-OpenAI"
+openai_model: "gpt-4.1-mini"
+```
+
+Enregistrez, puis redémarrez le module. La clé est lue côté serveur depuis
+`/data/options.json`. Elle n'est jamais insérée dans les pages web ni dans
+la base d'inventaire. Laissez la clé vide pour utiliser l'ajout manuel.
+
+La reconnaissance utilise l'[API OpenAI pour les images](https://developers.openai.com/api/docs/guides/images-vision).
+Elle nécessite une clé API et une facturation API active ; elle ne se connecte pas
+à votre session ChatGPT. Les appels peuvent occasionner des frais sur le compte API.
+Seules la photo convertie en JPEG et la liste des noms de catégories sont envoyées
+à OpenAI. Les noms et références du stock sont comparés localement. Les réponses
+ne sont pas enregistrées chez OpenAI via l'option `store` (`store: false`) ; les
+[règles de conservation de l'API](https://developers.openai.com/api/docs/guides/your-data)
+restent applicables.
+
+### Avec Docker Compose ou Python
+
+Avec Compose, créez un fichier `.env` (ignoré par Git) à la racine :
+
+```dotenv
+OPENAI_API_KEY=votre-cle-API-OpenAI
+OPENAI_VISION_MODEL=gpt-4.1-mini
+```
+
+Puis `docker compose up -d --build`. Sans Docker, définissez ces mêmes variables
+d'environnement avant de lancer Uvicorn. Aucun nouveau service n'est nécessaire.
+
+Les brouillons et photos temporaires sont dans la base SQLite. Ils expirent après
+24 heures et sont nettoyés au prochain ajout de photo. À la confirmation, la photo
+temporaire est retirée du brouillon ; seule une nouvelle fiche reçoit cette photo.
+Les brouillons non terminés survivent à un redémarrage pendant leur durée de validité.
+
 ## Où sont les données
 
 Avec Docker Compose, tout est dans le dossier `data/` à la racine du projet. Il n'est pas versionné. Sur Home Assistant OS, voir la section précédente : les mêmes fichiers sont sous `/data` dans le module.

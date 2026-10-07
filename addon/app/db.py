@@ -58,6 +58,15 @@ _MONTHS: tuple[str, ...] = (
 # Printed QR codes point at /composants/{id}; reuse would open the wrong part.
 _SCHEMA: tuple[str, ...] = (
     """
+    CREATE TABLE IF NOT EXISTS quick_drafts (
+        token TEXT PRIMARY KEY,
+        photo BLOB NOT NULL,
+        analysis TEXT NOT NULL,
+        created_at REAL NOT NULL,
+        completed_item INTEGER
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,

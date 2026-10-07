@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Ajout rapide — StuffManager{% endblock %}
+{% block content %}
+<p class="eyebrow">01 / PHOTOGRAPHIER</p>
+<h1>Ajout rapide</h1>
+<p class="lead">Une photo, puis le bon rangement. Pour un câble, montrez les deux extrémités côte à côte.</p>
+{% if not configured %}
+<p class="banner">La reconnaissance n'est pas encore activée. Renseignez <strong>openai_api_key</strong> dans la configuration du module Home Assistant, puis redémarrez-le. Vous pouvez déjà ajouter une photo et identifier l'objet manuellement.</p>
+{% endif %}
+<form class="stack" method="post" action="/ajout-rapide" enctype="multipart/form-data" id="quick-photo-form">
+  <label>Prendre une photo
+    <input id="camera-photo" type="file" name="photo" accept="image/*,image/heic,image/heif,.heic,.heif" capture="environment">
+  </label>
+  <label>Ou choisir dans la galerie
+    <input id="gallery-photo" type="file" name="galerie" accept="image/*,image/heic,image/heif,.heic,.heif">
+  </label>
+  <p class="hint">Un seul objet ou type de câble par photo. JPEG, PNG, WebP ou HEIC, 8 Mo maximum.</p>
+  <img id="quick-preview" class="photo-preview" alt="Aperçu de l'objet à ajouter" hidden>
+  {% if configured %}<p class="hint">En lançant l'analyse, vous envoyez cette photo à OpenAI. Les appels sont facturés sur votre compte API. La recherche dans votre stock se fait ensuite ici.</p>{% endif %}
+  <button type="submit" id="analyze-button">{% if configured %}Identifier et chercher dans mon stock{% else %}Continuer avec cette photo{% endif %}</button>
+  <p id="analysis-progress" class="hint" role="status" aria-live="polite" hidden>Analyse en cours… Cela peut prendre quelques secondes.</p>
+</form>
+<p class="back"><a href="/composants/nouveau">Ajouter sans photo</a></p>
+<script>
+(() => {
+  const inputs = [document.getElementById('camera-photo'), document.getElementById('gallery-photo')];
+  const preview = document.getElementById('quick-preview');
+  let url;
+  inputs.forEach(input => input.addEventListener('change', () => {
+    if (url) URL.revokeObjectURL(url);
+    url = null;
+    preview.hidden = true;
+    if (!input.files.length) return;
+    inputs.forEach(other => { if (other !== input) other.value = ''; });
+    url = URL.createObjectURL(input.files[0]);
+    preview.onload = () => { preview.hidden = false; };
+    preview.onerror = () => { preview.hidden = true; };
+    preview.src = url;
+  }));
+  document.getElementById('quick-photo-form').addEventListener('submit', () => {
+    document.getElementById('analyze-button').disabled = true;
+    document.getElementById('analysis-progress').hidden = false;
+  });
+})();
+</script>
+{% endblock %}

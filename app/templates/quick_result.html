@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Confirmer l’ajout rapide — StuffManager{% endblock %}
+{% block page_class %}inventory-page{% endblock %}
+{% block content %}
+<p class="eyebrow">02 / IDENTIFIER ET RANGER</p>
+<h1>Le bon objet, au bon endroit.</h1>
+<p class="lead">Vérifiez les connecteurs, la longueur et la référence avant de regrouper des câbles.</p>
+<div class="quick-workspace">
+  <aside class="surface quick-inspector">
+    <img class="photo-preview" src="/ajout-rapide/{{ token }}/photo" alt="Photo de l'objet à ajouter">
+    <h2>{{ analysis.name or "Objet à identifier" }}</h2>
+    {% if analysis.warning %}<p class="errors" role="status">{{ analysis.warning }}</p>
+    {% else %}<p class="recognition-badge">{% if analysis.confidence == 'uncertain' %}Identification incertaine{% elif analysis.confidence == 'probable' %}Identification probable{% else %}Identification proposée{% endif %} · à confirmer</p>{% endif %}
+    {% if analysis.reference %}<p class="reference">Inscription : {{ analysis.reference }}</p>{% endif %}
+    {% if analysis.notes %}<p class="notes">{{ analysis.notes }}</p>{% endif %}
+    <p class="hint">Aucun changement dans le stock avant votre confirmation. Cette photo reste disponible pendant 24 heures.</p>
+    <p class="back"><a href="/ajout-rapide">Reprendre une photo</a></p>
+  </aside>
+  <div class="quick-decisions">
+    <section class="surface" aria-labelledby="existing-title">
+      <p class="eyebrow">DÉJÀ DANS LA MAISON ?</p>
+      <h2 id="existing-title">Objets similaires dans votre stock</h2>
+      <form class="quick-search" method="get" action="/ajout-rapide/{{ token }}">
+        <label for="quick-query">Corriger le nom ou chercher un autre câble</label>
+        <div class="search-actions"><input id="quick-query" type="search" name="q" value="{{ q }}" maxlength="240" placeholder="ex. USB-C vers USB-A"><button type="submit">Chercher</button></div>
+      </form>
+      {% for candidate in candidates %}
+      <article class="quick-match">
+        <div class="section-heading"><div><h3><a href="/composants/{{ candidate.id }}" target="_blank" rel="noopener">{{ candidate.name }}</a></h3><p class="hint">{{ candidate.category_name }}{% if candidate.reference %} · {{ candidate.reference }}{% endif %}</p></div><span class="count">{{ candidate.quantity }}</span></div>
+        <p class="quick-place"><strong>Ranger au même endroit :</strong> {{ candidate.place_label }}</p>
+        {% if not candidate.location_id %}<p class="hint">Cette fiche n'a pas encore d'emplacement. Vous pourrez le renseigner après l'ajout.</p>{% endif %}
+        {% if candidate.track_usage %}<p class="hint">Utilisés : {{ candidate.used_quantity }} · Disponibles : {{ candidate.available }}. Les nouveaux objets seront disponibles.</p>{% endif %}
+        <form class="quick-merge" method="post" action="/ajout-rapide/{{ token }}/confirmer">
+          <input type="hidden" name="mode" value="existing"><input type="hidden" name="item_id" value="{{ candidate.id }}"><input type="hidden" name="q" value="{{ q }}">
+          <input type="hidden" name="expected_quantity" value="{{ candidate.quantity }}"><input type="hidden" name="expected_location" value="{{ candidate.location_id or '' }}"><input type="hidden" name="expected_spot" value="{{ candidate.spot or '' }}">
+          <label>Quantité à ajouter<input type="number" name="quantite" value="1" min="1" max="1000000" required inputmode="numeric"></label>
+          <button type="submit">Ajouter à cette fiche</button>
+        </form>
+        <p class="hint">La quantité s'ajoute au stock actuel. La fiche, sa photo et son rangement sont conservés.</p>
+      </article>
+      {% else %}<p class="empty-note">Aucune fiche similaire trouvée. Essayez un autre nom, ou créez une nouvelle fiche ci-dessous.</p>{% endfor %}
+    </section>
+    <details class="surface quick-new" {% if not candidates %}open{% endif %}>
+      <summary>Créer une nouvelle fiche</summary>
+      <p class="hint">Si c'est un autre câble, gardez une fiche distincte. La photo sera enregistrée avec la nouvelle fiche.</p>
+      {% if not categories %}<p class="empty-note">Créez d'abord une <a href="/categories">catégorie</a>, puis revenez sur cette page.</p>{% else %}
+      <form class="stack" method="post" action="/ajout-rapide/{{ token }}/confirmer">
+        <input type="hidden" name="mode" value="new"><input type="hidden" name="q" value="{{ q }}">
+        <label>Nom de l'objet<input name="nom" value="{{ values.nom }}" maxlength="160" required placeholder="ex. Câble USB-C vers USB-A"></label>
+        <label>Catégorie<select name="categorie_id" required><option value="">Choisir…</option>{% for c in categories %}<option value="{{ c.id }}" {% if values.categorie_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></label>
+        <label>Quantité<input name="quantite" type="number" value="{{ values.quantite }}" min="1" max="1000000" required inputmode="numeric"></label>
+        <label>Emplacement<select name="emplacement_id"><option value="">— Aucun —</option>{% for loc in locations %}<option value="{{ loc.id }}" {% if values.emplacement_id == loc.id|string %}selected{% endif %}>{{ loc.name }}</option>{% endfor %}</select></label>
+        <label>Détail dans l'emplacement<input name="spot" value="{{ values.spot }}" maxlength="80" placeholder="ex. tiroir du haut"></label>
+        <label>Référence<input name="reference" value="{{ values.reference }}" maxlength="80"></label>
+        <label>Notes<textarea name="notes" rows="3" maxlength="4000">{{ values.notes }}</textarea></label>
+        <button type="submit">Créer la fiche avec cette photo</button>
+      </form>{% endif %}
+    </details>
+  </div>
+</div>
+{% endblock %}

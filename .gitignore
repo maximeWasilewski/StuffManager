@@ -6,3 +6,4 @@ venv/
 data/
 *.egg-info/
 .DS_Store
+.env
