@@ -128,8 +128,6 @@ et sérialise les renouvellements pour éviter les conflits entre processus.
 Déconnecter tente de révoquer la session chez OpenAI puis efface les jetons locaux.
 Si la révocation échoue, retirez aussi StuffManager dans les réglages ChatGPT.
 
-Le choix **API OpenAI** reste disponible, avec ses crédits séparés. Il n'y a aucun
-basculement automatique vers l'API payante lorsque le forfait ChatGPT est bloqué.
 Le choix **Identification manuelle** n'envoie pas la photo à OpenAI.
 
 Contrat officiel : [connexion](https://developers.openai.com/siwc/token-sharing-open-source/sign-in),
@@ -155,46 +153,28 @@ nommée différemment. Jusqu'à 12 propositions sont affichées.
   restent en place ; les nouveaux objets sont disponibles.
 - **Nouvel objet** : corrigez le nom, la catégorie et l'emplacement, puis confirmez.
   La photo est conservée sur la nouvelle fiche.
-- **Sans clé ou analyse indisponible** : la photo reste utilisable et le parcours
+- **Sans compte connecté ou analyse indisponible** : la photo reste utilisable et le parcours
   fonctionne en identification manuelle.
 
 Aucun objet n'est créé ni aucune quantité modifiée pendant l'analyse. Une double
 confirmation ne compte qu'une fois. Si le stock ou le rangement change entre la
 proposition et la confirmation, l'application demande de vérifier à nouveau.
 
-### Activer la reconnaissance dans Home Assistant
+### Activer la reconnaissance
 
-Après fusion de la version 1.4.0 et mise à jour du module, ouvrez **Configuration** :
+Connectez votre abonnement depuis **Connexion et réglages ChatGPT**, comme décrit
+ci-dessus. Le mode avec clé API séparée a été retiré en version 1.5.2, ainsi que
+les options `openai_api_key`, `openai_model` et les variables d'environnement associées.
+Cela s'applique à Home Assistant, Docker Compose et Python.
 
-```yaml
-openai_api_key: "votre-cle-API-OpenAI"
-openai_model: "gpt-4.1-mini"
-```
-
-Enregistrez, puis redémarrez le module. La clé est lue côté serveur depuis
-`/data/options.json`. Elle n'est jamais insérée dans les pages web ni dans
-la base d'inventaire. Laissez la clé vide pour utiliser l'ajout manuel.
-
-La reconnaissance utilise l'[API OpenAI pour les images](https://developers.openai.com/api/docs/guides/images-vision).
-Elle nécessite une clé API et une facturation API active ; elle ne se connecte pas
-à votre session ChatGPT. Les appels peuvent occasionner des frais sur le compte API.
 Seules la photo convertie en JPEG et la liste des noms de catégories sont envoyées
-à OpenAI. Les noms et références du stock sont comparés localement. Les réponses
-ne sont pas enregistrées chez OpenAI via l'option `store` (`store: false`) ; les
-[règles de conservation de l'API](https://developers.openai.com/api/docs/guides/your-data)
-restent applicables.
+à OpenAI. Le rapprochement avec le stock reste local. Les notes d'une nouvelle
+fiche sont vides par défaut ; les précisions de l'identification restent affichées
+séparément. Vous pouvez saisir vos propres notes avant de confirmer.
 
-### Avec Docker Compose ou Python
-
-Avec Compose, créez un fichier `.env` (ignoré par Git) à la racine :
-
-```dotenv
-OPENAI_API_KEY=votre-cle-API-OpenAI
-OPENAI_VISION_MODEL=gpt-4.1-mini
-```
-
-Puis `docker compose up -d --build`. Sans Docker, définissez ces mêmes variables
-d'environnement avant de lancer Uvicorn. Aucun nouveau service n'est nécessaire.
+La photothèque accepte JPEG (dont les fichiers MPO contenant plusieurs images),
+PNG, WebP, HEIC/HEIF, AVIF et TIFF. L'image principale est convertie en JPEG,
+orientée puis réduite à 1600 pixels maximum. La limite d'envoi reste de 8 Mo.
 
 Les brouillons et photos temporaires sont dans la base SQLite. Ils expirent après
 24 heures et sont nettoyés au prochain ajout de photo. À la confirmation, la photo

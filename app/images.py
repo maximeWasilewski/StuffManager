@@ -18,7 +18,10 @@ register_heif_opener()
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
 MAX_EDGE = 1600
 
-_ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "HEIF"}
+# Some JPEG exports carry extra pictures (depth/HDR) and Pillow reports MPO.
+# Convert their primary image, just as for HEIF, to the stored JPEG.
+_ALLOWED_FORMATS = {"JPEG", "MPO", "PNG", "WEBP", "HEIF", "AVIF", "TIFF"}
+_FORMAT_MESSAGE = "Utilisez un JPEG (y compris MPO), PNG, WebP, HEIC, AVIF ou TIFF."
 
 
 class PhotoError(ValueError):
@@ -39,15 +42,18 @@ def process_photo(data: bytes) -> bytes:
         raise PhotoError("La photo dépasse 8 Mo.")
     try:
         image = Image.open(BytesIO(data))
+        source_format = image.format
+        if source_format not in _ALLOWED_FORMATS:
+            raise PhotoError("Ce format de photo n'est pas pris en charge. " + _FORMAT_MESSAGE)
         image.load()
     except Image.DecompressionBombError as exc:
         raise PhotoError("La photo est trop grande en pixels.") from exc
+    except PhotoError:
+        raise
     except Exception as exc:
         raise PhotoError(
-            "Fichier image illisible. Utilisez un JPEG, un PNG, un WebP ou un HEIC."
+            "Fichier image illisible. " + _FORMAT_MESSAGE
         ) from exc
-    if image.format not in _ALLOWED_FORMATS:
-        raise PhotoError("La photo doit être un JPEG, un PNG, un WebP ou un HEIC.")
     image = ImageOps.exif_transpose(image) or image
     image.thumbnail((MAX_EDGE, MAX_EDGE), Image.Resampling.LANCZOS)
     rgb = _to_rgb(image)

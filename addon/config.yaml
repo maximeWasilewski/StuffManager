@@ -1,5 +1,5 @@
 name: StuffManager
-version: "1.5.1"
+version: "1.5.2"
 slug: stuffmanager
 description: Inventaire des objets de la maison avec QR codes pour les lieux de rangement.
 url: https://github.com/maximeWasilewski/StuffManager
@@ -18,9 +18,5 @@ ports_description:
 environment:
   STUFFMANAGER_DATA: /data
 backup: cold
-options:
-  openai_api_key: ""
-  openai_model: "gpt-4.1-mini"
-schema:
-  openai_api_key: password?
-  openai_model: str?
+options: {}
+schema: {}

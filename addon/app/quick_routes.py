@@ -47,7 +47,7 @@ def create_quick_router(render, get_conn, redirect):
         if q is None:
             q = analysis["name"]
         q = q[:240]
-        defaults = dict(DEFAULT_VALUES, nom=analysis["name"], reference=analysis["reference"], notes=analysis["notes"])
+        defaults = dict(DEFAULT_VALUES, nom=analysis["name"], reference=analysis["reference"], notes="")
         defaults["categorie_id"] = next((str(c["id"]) for c in categories if c["name"] == analysis["category"]), "")
         return render(request, "quick_result.html", nav="rapide", token=draft["token"],
                       analysis=analysis, q=q, candidates=recognition.suggestions(_inventory(conn), q, analysis["reference"]),
@@ -56,7 +56,7 @@ def create_quick_router(render, get_conn, redirect):
 
     @router.get("/ajout-rapide")
     async def start(request: Request):
-        return render(request, "quick_start.html", nav="rapide", configured=bool(recognition.recognition_settings()[0]),
+        return render(request, "quick_start.html", nav="rapide",
                       chatgpt=request.app.state.chatgpt.status())
 
     @router.post("/ajout-rapide")
@@ -65,7 +65,7 @@ def create_quick_router(render, get_conn, redirect):
         conn.execute("DELETE FROM quick_drafts WHERE created_at <= ?", (time.time() - TTL,))
         conn.commit()  # Never hold a SQLite write lock during a network request.
         if conn.execute("SELECT COUNT(*) FROM quick_drafts WHERE completed_item IS NULL").fetchone()[0] >= 100:
-            return render(request, "quick_start.html", nav="rapide", configured=bool(recognition.recognition_settings()[0]),
+            return render(request, "quick_start.html", nav="rapide",
                           error="Trop de photos en attente. Terminez un ajout ou réessayez demain.", status_code=429,
                           chatgpt=request.app.state.chatgpt.status())
         form = await request.form()
@@ -82,17 +82,15 @@ def create_quick_router(render, get_conn, redirect):
                     raise PhotoError("La photo dépasse 8 Mo.")
             photo = process_photo(bytes(raw))
         except PhotoError as exc:
-            return render(request, "quick_start.html", nav="rapide", configured=bool(recognition.recognition_settings()[0]),
+            return render(request, "quick_start.html", nav="rapide",
                           error=str(exc), status_code=400, chatgpt=request.app.state.chatgpt.status())
         try:
-            provider = str(form.get("provider") or "api")
+            provider = str(form.get("provider") or "chatgpt")
             categories = [c["name"] for c in list_categories(conn)]
             if provider == "chatgpt":
                 analysis = await recognition.recognize(photo, categories, store=request.app.state.chatgpt)
             elif provider == "manual":
                 raise recognition.RecognitionError("Identification manuelle : saisissez le nom de l'objet pour chercher dans le stock.")
-            elif provider == "api":
-                analysis = await recognition.recognize(photo, categories)
             else:
                 raise recognition.RecognitionError("Choisissez un mode d'identification valide.")
             analysis["warning"] = ""

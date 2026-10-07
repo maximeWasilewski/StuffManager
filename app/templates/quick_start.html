@@ -7,20 +7,20 @@
 <p><a href="/chatgpt">Connexion et réglages ChatGPT</a></p>
 {% if chatgpt and chatgpt.connected %}
 <p class="banner">Compte ChatGPT connecté. Vous pouvez utiliser votre abonnement pour identifier les photos.</p>
-{% elif not configured %}
-<p class="banner">La reconnaissance n'est pas encore activée. Renseignez <strong>openai_api_key</strong> dans la configuration du module Home Assistant, puis redémarrez-le. Vous pouvez déjà ajouter une photo et identifier l'objet manuellement.</p>
+{% else %}
+<p class="banner">La reconnaissance n'est pas encore activée. Connectez votre compte depuis <a href="/chatgpt">Connexion ChatGPT</a>. Vous pouvez déjà ajouter une photo et identifier l'objet manuellement.</p>
 {% endif %}
 <form class="stack" method="post" action="/ajout-rapide" enctype="multipart/form-data" id="quick-photo-form">
-  <label>Identifier avec<select name="provider" id="recognition-provider"><option value="chatgpt" {% if chatgpt and chatgpt.connected %}selected{% endif %}>Mon abonnement ChatGPT</option><option value="api" {% if not (chatgpt and chatgpt.connected) and configured %}selected{% endif %}>API OpenAI (crédits séparés)</option><option value="manual" {% if not configured and not (chatgpt and chatgpt.connected) %}selected{% endif %}>Identification manuelle</option></select></label>
+  <label>Identifier avec<select name="provider" id="recognition-provider"><option value="chatgpt" {% if chatgpt and chatgpt.connected %}selected{% endif %}>Mon abonnement ChatGPT</option><option value="manual" {% if not (chatgpt and chatgpt.connected) %}selected{% endif %}>Identification manuelle</option></select></label>
   <label>Prendre une photo
     <input id="camera-photo" type="file" name="photo" accept="image/*,image/heic,image/heif,.heic,.heif" capture="environment">
   </label>
   <label>Ou choisir dans la galerie
     <input id="gallery-photo" type="file" name="galerie" accept="image/*,image/heic,image/heif,.heic,.heif">
   </label>
-  <p class="hint">Un seul objet ou type de câble par photo. JPEG, PNG, WebP ou HEIC, 8 Mo maximum.</p>
+  <p class="hint">Un seul objet ou type de câble par photo. JPEG (y compris MPO), PNG, WebP, HEIC, AVIF ou TIFF, 8 Mo maximum.</p>
   <img id="quick-preview" class="photo-preview" alt="Aperçu de l'objet à ajouter" hidden>
-  <p class="hint">Avec ChatGPT ou l'API, la photo est envoyée à OpenAI. ChatGPT utilise les limites de votre abonnement ; l'API utilise vos crédits API séparés. Aucun basculement automatique entre les deux. La recherche dans le stock reste locale.</p>
+  <p class="hint">Avec ChatGPT, la photo est envoyée à OpenAI et utilise les limites de votre abonnement. L'identification manuelle et la recherche dans le stock restent locales.</p>
   <button type="submit" id="analyze-button">Continuer avec cette photo</button>
   <p id="analysis-progress" class="hint" role="status" aria-live="polite" hidden>Analyse en cours… Cela peut prendre quelques secondes.</p>
 </form>
