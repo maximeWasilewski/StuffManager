@@ -209,7 +209,6 @@ def test_selected_chatgpt_never_falls_back_to_paid_api(client, monkeypatch):
     def credentials():
         raise auth.AuthError("Reconnectez votre compte ChatGPT.")
     monkeypatch.setattr(client.app.state.chatgpt, "credentials", credentials)
-    monkeypatch.setattr(recognition, "recognition_settings", lambda: ("paid-api-key", "api-model"))
     monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: pytest.fail("Paid API must not be called"))
     result = client.post("/ajout-rapide", data={"provider": "chatgpt"}, files={"photo": ("test.png", photo())})
     assert "Reconnectez votre compte ChatGPT" in result.text
@@ -222,7 +221,7 @@ def test_stream_request_uses_account_model_and_supported_fields(monkeypatch):
         captured.update(json.loads(request.data))
         return io.BytesIO(("event: response.completed\ndata: " + json.dumps(event) + "\n\n").encode())
     monkeypatch.setattr(recognition, "urlopen", urlopen)
-    assert recognition._recognize(photo(), "mock-token", "account-model", ["Câble"], chatgpt=True) == IDENTIFIED
+    assert recognition._recognize(photo(), "mock-token", "account-model", ["Câble"]) == IDENTIFIED
     assert captured["stream"] is True and captured["store"] is False
     assert captured["model"] == "account-model" and "max_output_tokens" not in captured
     assert isinstance(captured["input"], list)
@@ -234,10 +233,10 @@ def test_incomplete_stream_never_saves_partial_identification(stream):
         recognition.read_completed_stream(io.BytesIO(stream))
 
 
-def test_credit_error_distinguished_without_leaking_body(monkeypatch):
+def test_subscription_limit_without_leaking_body(monkeypatch):
     def error(*args, **kwargs):
         raise HTTPError("https://api.openai.com", 429, "fail", {}, io.BytesIO(json.dumps({"error": {"code": "insufficient_quota", "message": "SECRET"}}).encode()))
     monkeypatch.setattr(recognition, "urlopen", error)
-    with pytest.raises(recognition.RecognitionError, match="Crédits API") as exc:
+    with pytest.raises(recognition.RecognitionError, match="limite ChatGPT") as exc:
         recognition._recognize(photo(), "key", "model", [])
     assert "SECRET" not in str(exc.value)

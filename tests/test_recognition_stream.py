@@ -24,7 +24,7 @@ def test_text_delivered_before_terminal_event_is_identified(monkeypatch, termina
         {"type": "response.completed", "response": {"status": "completed", "output": terminal_output}},
     ]
     monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: stream(*events))
-    assert recognition._recognize(b"photo", "secret", "model", ["Câble"], chatgpt=True) == IDENTIFIED
+    assert recognition._recognize(b"photo", "secret", "model", ["Câble"]) == IDENTIFIED
 
 
 def test_output_item_delivered_before_terminal_event_is_identified(monkeypatch):
@@ -34,7 +34,7 @@ def test_output_item_delivered_before_terminal_event_is_identified(monkeypatch):
         {"type": "response.completed", "response": {"status": "completed"}},
     ]
     monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: stream(*events))
-    assert recognition._recognize(b"photo", "secret", "model", ["Câble"], chatgpt=True) == IDENTIFIED
+    assert recognition._recognize(b"photo", "secret", "model", ["Câble"]) == IDENTIFIED
 
 
 @pytest.mark.parametrize("ending", [None, "response.failed", "response.incomplete"])
@@ -50,14 +50,14 @@ def test_valid_text_without_successful_completion_is_never_accepted(ending):
 def test_json_wrappers_are_accepted(monkeypatch, wrapper):
     response = {"status": "completed", "output": [{"content": [
         {"type": "output_text", "text": wrapper.format(json.dumps(IDENTIFIED))}]}]}
-    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: io.BytesIO(json.dumps(response).encode()))
+    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: stream({"type": "response.completed", "response": response}))
     assert recognition._recognize(b"photo", "secret", "model", ["Câble"]) == IDENTIFIED
 
 
 def test_format_error_is_not_reported_as_unrecognizable_object(monkeypatch, caplog):
     response = {"status": "completed", "output": [{"content": [
         {"type": "output_text", "text": "PRIVATE PHOTO DESCRIPTION"}]}]}
-    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: io.BytesIO(json.dumps(response).encode()))
+    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: stream({"type": "response.completed", "response": response}))
     with pytest.raises(recognition.RecognitionError, match="format attendu"):
         recognition._recognize(b"photo", "SECRET KEY", "model", [])
     assert "invalid response format" in caplog.text
@@ -67,7 +67,7 @@ def test_format_error_is_not_reported_as_unrecognizable_object(monkeypatch, capl
 def test_empty_name_is_reported_as_unidentified(monkeypatch):
     response = {"status": "completed", "output": [{"content": [
         {"type": "output_text", "text": json.dumps(dict(IDENTIFIED, name=" "))}]}]}
-    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: io.BytesIO(json.dumps(response).encode()))
+    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: stream({"type": "response.completed", "response": response}))
     with pytest.raises(recognition.RecognitionError, match="pas identifié d'objet"):
         recognition._recognize(b"photo", "secret", "model", [])
 
@@ -80,7 +80,7 @@ def test_completed_refusal_is_not_overridden_by_earlier_text(monkeypatch):
     ]
     monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: stream(*events))
     with pytest.raises(recognition.RecognitionError, match="refusé"):
-        recognition._recognize(b"photo", "secret", "model", [], chatgpt=True)
+        recognition._recognize(b"photo", "secret", "model", [])
 
 
 def test_chatgpt_stream_identification_reaches_review_and_stock_suggestions(client, monkeypatch):

@@ -1,3 +1,9 @@
+# 1.5.2
+
+- Notes vides par défaut dans les nouvelles fiches d'ajout rapide, sans reprendre les commentaires de ChatGPT.
+- Retrait du mode API OpenAI, de ses réglages et variables d'environnement ; abonnement ChatGPT ou identification manuelle.
+- Photos de photothèque : accepte les JPEG multi-images (MPO), AVIF et TIFF en plus de JPEG, PNG, WebP et HEIC ; conversion de l'image principale en JPEG.
+
 # 1.5.1
 
 - Reconnaissance ChatGPT : conserve le texte transmis avant l'événement de fin, sans accepter de réponse interrompue.

@@ -21,9 +21,15 @@ IDENTIFIED = {"name": "Câble USB-C vers USB-A", "reference": "", "category": "C
               "confidence": "probable", "notes": "Vérifier la longueur avant de regrouper."}
 
 
+def streamed(response):
+    event_type = "response.completed" if response.get("status") == "completed" else "response.incomplete"
+    event = {"type": event_type, "response": response}
+    return BytesIO(("data: " + json.dumps(event) + "\n\n").encode())
+
+
 @pytest.fixture
 def identified(monkeypatch):
-    async def recognize(photo, categories):
+    async def recognize(photo, categories, *, store=None):
         return dict(IDENTIFIED)
     monkeypatch.setattr(recognition, "recognize", recognize)
 
@@ -136,15 +142,39 @@ def test_invalid_new_form_retains_photo_and_corrected_values(client, identified)
     conn.close()
 
 
+def test_quick_add_notes_start_empty_and_keep_only_user_input(client, identified):
+    url = draft(client)
+    page = client.get(url)
+    assert '<textarea name="notes" rows="3" maxlength="4000"></textarea>' in page.text
+    conn = connect(client.app.state.db_path)
+    category = next(c["id"] for c in list_categories(conn) if c["name"] == "Câble")
+    conn.close()
+    result = client.post(url + "/confirmer", data=dict(mode="new", nom=IDENTIFIED["name"],
+                         categorie_id=str(category), quantite="1", notes="Mes notes personnelles"))
+    assert result.status_code == 200
+    conn = connect(client.app.state.db_path)
+    assert conn.execute("SELECT notes FROM items").fetchone()[0] == "Mes notes personnelles"
+    conn.close()
+
+
+def test_removed_api_mode_is_not_shown_and_cannot_call_openai(client, monkeypatch):
+    page = client.get("/ajout-rapide").text
+    assert 'value="api"' not in page and "openai_api_key" not in page
+    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: pytest.fail("Removed provider must not call OpenAI"))
+    result = client.post("/ajout-rapide", data={"provider": "api"},
+                         files={"photo": ("cable.png", photo(), "image/png")})
+    from html import unescape
+    assert "mode d'identification valide" in unescape(result.text)
+
+
 def test_missing_key_and_network_failure_allow_manual_add(client, monkeypatch):
-    async def unavailable(photo, categories):
+    async def unavailable(photo, categories, *, store=None):
         raise recognition.RecognitionError("Impossible de joindre OpenAI.")
     monkeypatch.setattr(recognition, "recognize", unavailable)
     url = draft(client)
     page = client.get(url)
     assert "Impossible de joindre OpenAI." in page.text
     assert "Créer une nouvelle fiche" in page.text
-    monkeypatch.setattr(recognition, "recognition_settings", lambda: ("", recognition.DEFAULT_MODEL))
     assert "reconnaissance n'est pas encore activée" in client.get("/ajout-rapide").text
 
 
@@ -195,7 +225,7 @@ def test_openai_request_is_structured_and_sends_only_photo_and_categories(monkey
     captured = {}
     def urlopen(request, timeout):
         captured.update(json.loads(request.data))
-        return BytesIO(json.dumps({"status": "completed", "output": [{"content": [{"type": "output_text", "text": json.dumps(IDENTIFIED)}]}]}).encode())
+        return streamed({"status": "completed", "output": [{"content": [{"type": "output_text", "text": json.dumps(IDENTIFIED)}]}]})
     monkeypatch.setattr(recognition, "urlopen", urlopen)
     result = recognition._recognize(photo(), "test-key-never-real", "gpt-4.1-mini", ["Câble"])
     assert result["name"] == IDENTIFIED["name"]
@@ -212,7 +242,7 @@ def test_openai_request_is_structured_and_sends_only_photo_and_categories(monkey
     {"status": "completed", "output": [{"content": [{"type": "output_text", "text": '{"name": 1}'}]}]},
 ])
 def test_openai_incomplete_refusal_and_bad_schema_are_handled(monkeypatch, response):
-    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: BytesIO(json.dumps(response).encode()))
+    monkeypatch.setattr(recognition, "urlopen", lambda *args, **kwargs: streamed(response))
     with pytest.raises(recognition.RecognitionError):
         recognition._recognize(photo(), "test", "test", [])
 
@@ -228,13 +258,12 @@ def test_provider_errors_never_expose_body_or_key(monkeypatch, code):
     assert "secret-account" not in str(exc.value)
 
 
-def test_missing_key_preserves_photo_without_calling_api(client, monkeypatch):
-    monkeypatch.setattr(recognition, "recognition_settings", lambda: ("", recognition.DEFAULT_MODEL))
+def test_missing_account_preserves_photo_without_calling_inference(client, monkeypatch):
     def unexpected_call(*args, **kwargs):
-        pytest.fail("No API call should happen without a key")
+        pytest.fail("No inference call should happen without a connected account")
     monkeypatch.setattr(recognition, "urlopen", unexpected_call)
     url = draft(client)
-    assert "nécessite une clé OpenAI" in client.get(url).text
+    assert "Connectez votre compte ChatGPT" in client.get(url).text
     assert client.get(url + "/photo").content
 
 

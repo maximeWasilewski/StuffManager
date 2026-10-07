@@ -110,7 +110,7 @@
   </label>
   <div class="photo-block">
     <label for="photo-input">Photo</label>
-    <span class="hint">Une seule photo. JPEG, PNG, WebP ou HEIC (iPhone), 8 Mo maximum. La nouvelle remplace l'ancienne.</span>
+    <span class="hint">Une seule photo. JPEG (y compris MPO), PNG, WebP, HEIC, AVIF ou TIFF, 8 Mo maximum. La nouvelle remplace l'ancienne.</span>
     {% if item and item.has_photo %}
     <img id="photo-current" class="photo-preview" src="/photos/{{ item.id }}.jpg" alt="Photo actuelle de {{ item.name }}">
     {% endif %}
