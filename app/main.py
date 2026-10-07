@@ -58,6 +58,7 @@ from app.images import (
     remove_photo,
     write_photo,
 )
+from app.quick_routes import create_quick_router
 
 APP_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = APP_DIR / "templates"
@@ -857,6 +858,7 @@ def create_app(data_dir: str | Path) -> FastAPI:
         return response
 
     application.include_router(router)
+    application.include_router(create_quick_router(render, get_conn, redirect))
 
     @application.exception_handler(404)
     async def not_found(request: Request, _exc: Exception):

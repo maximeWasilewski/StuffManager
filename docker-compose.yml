@@ -8,6 +8,8 @@ services:
       - "8080:8080"
     environment:
       STUFFMANAGER_DATA: /app/data
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_VISION_MODEL: ${OPENAI_VISION_MODEL:-gpt-4.1-mini}
     volumes:
       - ./data:/app/data
     restart: unless-stopped

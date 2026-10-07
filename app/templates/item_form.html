@@ -10,6 +10,7 @@
 {% else %}
 <p class="eyebrow">LA FICHE D’INVENTAIRE</p>
 <h1>{% if item %}Modifier{% else %}Nouvel objet{% endif %}</h1>
+{% if not item %}<p><a class="button secondary" href="/ajout-rapide">Prendre une photo · Ajout rapide</a></p>{% endif %}
 {% if not item %}
 <p class="lead">Une fiche par objet ou lot d'objets identiques. Le code-barres est créé à l'enregistrement.</p>
 {% endif %}
