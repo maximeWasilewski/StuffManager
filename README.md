@@ -72,7 +72,71 @@ Elles restent en place si vous reconstruisez ou mettez à jour le module. Une sa
 
 Plus tard, le même dépôt GitHub pourra être ajouté comme dépôt de modules : il contient `repository.json` à la racine. L'URL à coller dans la boutique est `https://github.com/maximeWasilewski/StuffManager`.
 
-## Ajout rapide par photo (1.4.0)
+## Utiliser l'abonnement ChatGPT (1.5.0)
+
+Dans **Ajout rapide → Connexion et réglages ChatGPT**, connectez un compte
+ChatGPT Plus ou Pro éligible avec la connexion officielle OpenAI. Ces analyses
+utilisent les limites du forfait ChatGPT, pas les crédits de la plateforme API.
+L'éligibilité et les modèles disponibles sont déterminés par OpenAI ; l'accès
+reste soumis aux limites du compte. Aucun accès aux conversations ChatGPT.
+
+### Sur Home Assistant ou un Raspberry Pi
+
+Le retour OAuth officiel utilise `127.0.0.1`, c'est-à-dire le PC qui ouvre le
+navigateur. Pour éviter de rediriger le téléphone vers une adresse inaccessible :
+
+1. Depuis votre instance StuffManager de confiance, téléchargez l'assistant de
+   connexion sur votre PC et extrayez le ZIP.
+2. Avec Python 3.12 ou plus, dans ce dossier, lancez :
+
+   ```shell
+   python -m pip install -r requirements.txt
+   python connect_chatgpt.py
+   ```
+
+   Sous Windows, utilisez `py` si la commande `python` est indisponible.
+3. Connectez-vous dans le navigateur ouvert sur le site officiel OpenAI et
+   autorisez l'utilisation du forfait. L'assistant écoute seulement sur la
+   boucle locale et s'arrête après la connexion (ou après dix minutes).
+4. Revenez dans StuffManager et importez `connexion-stuffmanager.chatgpt`, créé
+   dans le dossier extrait. Le fichier est chiffré pour cette installation et
+   ne peut être importé qu'une fois, sous une heure. Un nouveau téléchargement
+   invalide le précédent. Téléchargez toujours l'assistant depuis une instance
+   de confiance, idéalement derrière HTTPS ; le chiffrement ne remplace pas
+   l'authenticité du téléchargement.
+5. Choisissez un modèle acceptant les images parmi ceux de votre compte.
+   Dans **Ajout rapide**, sélectionnez **Mon abonnement ChatGPT**.
+
+Pour ajouter un autre compte ou espace ChatGPT, relancez l'assistant avec
+`python connect_chatgpt.py --new-account`. Les connexions du module restent
+distinctes, même avec la même adresse e-mail, et peuvent être sélectionnées
+dans les réglages. Sur le PC, seuls l'identifiant d'hôte et la dernière
+inscription (sans jeton) restent dans `~/.stuffmanager-chatgpt/registration.json`.
+
+### Installation sur le PC
+
+Si le navigateur et StuffManager tournent sur le même PC, ouvrez l'application
+avec `http://127.0.0.1:<port>`, puis utilisez **Continue with ChatGPT**. Le retour
+doit garder exactement cet hôte et ce port. `localhost` ou l'adresse réseau
+du serveur ne conviennent pas pour ce parcours direct.
+
+Les connexions sont conservées dans `<dossier-des-données>/chatgpt/sessions.db`
+(` /data/chatgpt/sessions.db` sur Home Assistant). Ce fichier contient des secrets :
+ne le publiez pas, ni ses sauvegardes. Le dossier est privé et le fichier est
+réservé au propriétaire sur Linux. Le module renouvelle les jetons automatiquement
+et sérialise les renouvellements pour éviter les conflits entre processus.
+Déconnecter tente de révoquer la session chez OpenAI puis efface les jetons locaux.
+Si la révocation échoue, retirez aussi StuffManager dans les réglages ChatGPT.
+
+Le choix **API OpenAI** reste disponible, avec ses crédits séparés. Il n'y a aucun
+basculement automatique vers l'API payante lorsque le forfait ChatGPT est bloqué.
+Le choix **Identification manuelle** n'envoie pas la photo à OpenAI.
+
+Contrat officiel : [connexion](https://developers.openai.com/siwc/token-sharing-open-source/sign-in),
+[hébergement distant](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms),
+[requêtes et images](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations).
+
+## Ajout rapide par photo
 
 Ouvrez **Ajout rapide** dans la navigation. Prenez une photo de l'objet ou choisissez
 une image dans la galerie ; pour un câble, montrez les deux connecteurs côte à côte.
